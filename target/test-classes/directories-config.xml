@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<component name="org.nuxeo.ecm.directory.multi.config">
+
+  <extension
+    target="org.nuxeo.ecm.directory.resilient.ResilientDirectoryFactory"
+    point="directories">
+
+    <directory name="resilient">
+      <schema>schema1</schema>
+      <idField>uid</idField>
+      <passwordField>foo</passwordField>
+
+      <source name="source1" creation="false">
+        <subDirectory name="dir1">
+        </subDirectory>
+      </source>
+
+      <source name="source2">
+        <subDirectory name="dir2">
+        </subDirectory>
+      </source>
+    </directory>
+
+
+  </extension>
+
+</component>
