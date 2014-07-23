@@ -1,0 +1,19 @@
+# Compiled source #
+###################
+*.class
+ 
+# All compiled resources by maven #
+###################################
+target/*
+ 
+# Logs and databases #
+######################
+*.log
+ 
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
