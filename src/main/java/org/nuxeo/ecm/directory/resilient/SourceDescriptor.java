@@ -19,10 +19,7 @@
 
 package org.nuxeo.ecm.directory.resilient;
 
-import java.util.Arrays;
-
 import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XNodeList;
 import org.nuxeo.common.xmap.annotation.XObject;
 import org.nuxeo.ecm.directory.multi.SubDirectoryDescriptor;
 
@@ -38,19 +35,16 @@ public class SourceDescriptor {
     @XNode("@master")
     public boolean master;
 
-    @XNode("@slaveOf")
-    public String slaveOf ;
-
     @XNode("@creation")
     public boolean creation;
 
-    @XNodeList(value = "subDirectory", type = SubDirectoryDescriptor[].class, componentType = SubDirectoryDescriptor.class)
-    public SubDirectoryDescriptor[] subDirectories;
+    @XNode(value = "subDirectory")
+    public SubDirectoryDescriptor subDirectory;
 
     @Override
     public String toString() {
-        return String.format("{source name=%s subDirectories=%s", name,
-                Arrays.toString(subDirectories));
+        return String.format("{source name=%s subDirectory=%s", name,
+                subDirectory);
     }
 
     /**
@@ -62,13 +56,8 @@ public class SourceDescriptor {
         clone.name = name;
         clone.creation = creation;
         clone.master = master;
-        clone.slaveOf = slaveOf;
-        if (subDirectories != null) {
-            clone.subDirectories = new SubDirectoryDescriptor[subDirectories.length];
-            for (int i = 0; i < subDirectories.length; i++) {
-                clone.subDirectories[i] = subDirectories[i].clone();
-            }
-        }
+        clone.subDirectory = subDirectory;
+
         return clone;
     }
 

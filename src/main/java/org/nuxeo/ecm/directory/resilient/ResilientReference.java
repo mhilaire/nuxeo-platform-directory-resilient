@@ -66,21 +66,21 @@ public class ResilientReference extends AbstractReference {
             throws DirectoryException {
         Set<String> ids = new HashSet<String>();
         for (SourceDescriptor src : dir.getDescriptor().sources) {
-            for (SubDirectoryDescriptor sub : src.subDirectories) {
-                Directory dir = ResilientDirectoryFactory.getDirectoryService().getDirectory(
-                        sub.name);
-                if (dir == null) {
-                    continue;
-                }
-                Reference ref = dir.getReference(fieldName);
-                if (ref == null) {
-                    continue;
-                }
-                try {
-                    ids.addAll(extractor.collect(ref));
-                } catch (DirectoryEntryNotFoundException e) {
-                    log.debug(e.getMessage());
-                }
+            SubDirectoryDescriptor sub = src.subDirectory;
+
+            Directory dir = ResilientDirectoryFactory.getDirectoryService().getDirectory(
+                    sub.name);
+            if (dir == null) {
+                continue;
+            }
+            Reference ref = dir.getReference(fieldName);
+            if (ref == null) {
+                continue;
+            }
+            try {
+                ids.addAll(extractor.collect(ref));
+            } catch (DirectoryEntryNotFoundException e) {
+                log.debug(e.getMessage());
             }
         }
         List<String> x = new ArrayList<String>(ids.size());

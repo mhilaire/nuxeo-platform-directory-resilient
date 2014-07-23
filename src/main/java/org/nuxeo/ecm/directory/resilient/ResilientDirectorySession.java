@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -96,30 +95,24 @@ public class ResilientDirectorySession extends BaseSession {
 
         final String idField;
 
-        final boolean isAuthenticating;
-
         final Map<String, String> fromSource;
 
         final Map<String, String> toSource;
 
         final Map<String, Serializable> defaultEntry;
 
-        final boolean isOptional;
-
         Session session;
 
         SubDirectoryInfo(String dirName, String dirSchemaName, String idField,
-                boolean isAuthenticating, Map<String, String> fromSource,
+                Map<String, String> fromSource,
                 Map<String, String> toSource,
-                Map<String, Serializable> defaultEntry, boolean isOptional) {
+                Map<String, Serializable> defaultEntry) {
             this.dirName = dirName;
             this.dirSchemaName = dirSchemaName;
             this.idField = idField;
-            this.isAuthenticating = isAuthenticating;
             this.fromSource = fromSource;
             this.toSource = toSource;
             this.defaultEntry = defaultEntry;
-            this.isOptional = isOptional;
         }
 
         Session getSession() throws DirectoryException {
@@ -140,35 +133,18 @@ public class ResilientDirectorySession extends BaseSession {
 
         final SourceDescriptor source;
 
-        final List<SubDirectoryInfo> subDirectoryInfos;
-
-        final List<SubDirectoryInfo> requiredSubDirectoryInfos;
-
-        final List<SubDirectoryInfo> optionalSubDirectoryInfos;
-
-        final SubDirectoryInfo authDirectoryInfo;
+        final SubDirectoryInfo subDirectoryInfo;
 
         SourceInfo(SourceDescriptor source,
-                List<SubDirectoryInfo> subDirectoryInfos,
-                SubDirectoryInfo authDirectoryInfo) {
+                SubDirectoryInfo subDirectoryInfo) {
             this.source = source;
-            this.subDirectoryInfos = subDirectoryInfos;
-            requiredSubDirectoryInfos = new ArrayList<SubDirectoryInfo>();
-            optionalSubDirectoryInfos = new ArrayList<SubDirectoryInfo>();
-            for (SubDirectoryInfo subDirInfo : subDirectoryInfos) {
-                if (subDirInfo.isOptional) {
-                    optionalSubDirectoryInfos.add(subDirInfo);
-                } else {
-                    requiredSubDirectoryInfos.add(subDirInfo);
-                }
-            }
-            this.authDirectoryInfo = authDirectoryInfo;
+            this.subDirectoryInfo = subDirectoryInfo;
         }
 
         @Override
         public String toString() {
             return String.format("{source=%s infos=%s}", source.name,
-                    subDirectoryInfos);
+                    subDirectoryInfo);
         }
     }
 
@@ -198,22 +174,20 @@ public class ResilientDirectorySession extends BaseSession {
                     "Directory '%s' schema '%s' has no id field '%s'",
                     directory.getName(), schemaName, schemaIdField));
         }
+        //TODO : ######### Check the number of sources !!!!! One master for at least one source !!!!
+        //TODO : ######### Find the master source ! And then compare or apply defi to slave sources
 
         List<SourceInfo> newSourceInfos = new ArrayList<SourceInfo>(2);
         for (SourceDescriptor source : descriptor.sources) {
-            int ndirs = source.subDirectories.length;
-            if (ndirs == 0) {
+
+            if (source.subDirectory == null) {
                 throw new DirectoryException(String.format(
-                        "Directory '%s' source '%s' has no subdirectories",
+                        "Directory '%s' source '%s' has no subdirectory",
                         directory.getName(), source.name));
             }
 
-            final List<SubDirectoryInfo> subDirectoryInfos = new ArrayList<SubDirectoryInfo>(
-                    ndirs);
 
-            SubDirectoryInfo authDirectoryInfo = null;
-            boolean hasRequiredDir = false;
-            for (SubDirectoryDescriptor subDir : source.subDirectories) {
+                SubDirectoryDescriptor subDir = source.subDirectory;
                 final String dirName = subDir.name;
                 final String dirSchemaName = directoryService.getDirectorySchema(dirName);
                 final String dirIdField = directoryService.getDirectoryIdField(dirName);
@@ -221,7 +195,18 @@ public class ResilientDirectorySession extends BaseSession {
                 final Map<String, String> fromSource = new HashMap<String, String>();
                 final Map<String, String> toSource = new HashMap<String, String>();
                 final Map<String, Serializable> defaultEntry = new HashMap<String, Serializable>();
-                final boolean dirIsOptional = subDir.isOptional;
+
+                //TODO : ######### Copy/Check schema value from master source to slave !!!!!
+
+                //Check that thesubDirectory info contains auth information
+                if(!dirIsAuth){
+                    throw new DirectoryException(String.format(
+                            "Directory '%s' source '%s' subdirectory '%s' "
+                                    + "has not a password field !",
+                            directory.getName(), source.name, dirName,
+                            dirSchemaName));
+                }
+
 
                 // XXX check authenticating
                 final Schema dirSchema = schemaManager.getSchema(dirSchemaName);
@@ -232,6 +217,8 @@ public class ResilientDirectorySession extends BaseSession {
                             directory.getName(), source.name, dirName,
                             dirSchemaName));
                 }
+
+                //TODO : remove/clean the following code
                 // record default field mappings if same name and record default
                 // values
                 final Set<String> dirSchemaFields = new HashSet<String>();
@@ -270,39 +257,11 @@ public class ResilientDirectorySession extends BaseSession {
                     toSource.put(fieldName, sourceFieldName);
                 }
                 SubDirectoryInfo subDirectoryInfo = new SubDirectoryInfo(
-                        dirName, dirSchemaName, dirIdField, dirIsAuth,
-                        fromSource, toSource, defaultEntry, dirIsOptional);
-                subDirectoryInfos.add(subDirectoryInfo);
+                        dirName, dirSchemaName, dirIdField,
+                        fromSource, toSource, defaultEntry );
 
-                if (dirIsAuth) {
-                    if (authDirectoryInfo != null) {
-                        throw new DirectoryException(
-                                String.format(
-                                        "Directory '%s' source '%s' has two subdirectories "
-                                                + "with a password field, '%s' and '%s'",
-                                        directory.getName(), source.name,
-                                        authDirectoryInfo.dirName, dirName));
-                    }
-                    authDirectoryInfo = subDirectoryInfo;
-                }
-                if (!dirIsOptional) {
-                    hasRequiredDir = true;
-                }
-            }
-            if (isAuthenticating() && authDirectoryInfo == null) {
-                throw new DirectoryException(String.format(
-                        "Directory '%s' source '%s' has no subdirectory "
-                                + "with a password field", directory.getName(),
-                        source.name));
-            }
-            if (!hasRequiredDir) {
-                throw new DirectoryException(String.format(
-                        "Directory '%s' source '%s' only has optional subdirectories: "
-                                + "no directory can be used has a reference.",
-                        directory.getName(), source.name));
-            }
-            newSourceInfos.add(new SourceInfo(source, subDirectoryInfos,
-                    authDirectoryInfo));
+
+            newSourceInfos.add(new SourceInfo(source, subDirectoryInfo));
         }
         sourceInfos = newSourceInfos;
     }
@@ -315,7 +274,7 @@ public class ResilientDirectorySession extends BaseSession {
             }
             DirectoryException exc = null;
             for (SourceInfo sourceInfo : sourceInfos) {
-                for (SubDirectoryInfo subDirectoryInfo : sourceInfo.subDirectoryInfos) {
+                SubDirectoryInfo subDirectoryInfo = sourceInfo.subDirectoryInfo;
                     Session session = subDirectoryInfo.session;
                     subDirectoryInfo.session = null;
                     if (session != null) {
@@ -333,7 +292,6 @@ public class ResilientDirectorySession extends BaseSession {
                             }
                         }
                     }
-                }
                 if (exc != null) {
                     throw exc;
                 }
@@ -349,12 +307,11 @@ public class ResilientDirectorySession extends BaseSession {
             return;
         }
         for (SourceInfo sourceInfo : sourceInfos) {
-            for (SubDirectoryInfo subDirectoryInfo : sourceInfo.subDirectoryInfos) {
+            SubDirectoryInfo subDirectoryInfo = sourceInfo.subDirectoryInfo;
                 Session session = subDirectoryInfo.session;
                 if (session != null) {
                     session.commit();
                 }
-            }
         }
     }
 
@@ -364,12 +321,11 @@ public class ResilientDirectorySession extends BaseSession {
             return;
         }
         for (SourceInfo sourceInfo : sourceInfos) {
-            for (SubDirectoryInfo subDirectoryInfo : sourceInfo.subDirectoryInfos) {
+            SubDirectoryInfo subDirectoryInfo = sourceInfo.subDirectoryInfo;
                 Session session = subDirectoryInfo.session;
                 if (session != null) {
                     session.rollback();
                 }
-            }
         }
     }
 
@@ -390,7 +346,7 @@ public class ResilientDirectorySession extends BaseSession {
 
     @Override
     public boolean isReadOnly() {
-        return Boolean.TRUE.equals(descriptor.readOnly);
+        return false;
     }
 
     @Override
@@ -398,24 +354,11 @@ public class ResilientDirectorySession extends BaseSession {
             throws ClientException {
         init();
         for (SourceInfo sourceInfo : sourceInfos) {
-            for (SubDirectoryInfo dirInfo : sourceInfo.subDirectoryInfos) {
-                if (!dirInfo.isAuthenticating) {
-                    continue;
-                }
+            SubDirectoryInfo dirInfo = sourceInfo.subDirectoryInfo;
                 if (dirInfo.getSession().authenticate(username, password)) {
                     return true;
                 }
-                if (dirInfo.isOptional
-                        && dirInfo.getSession().getEntry(username) == null) {
-                    // check if given password equals to default value
-                    String passwordField = dirInfo.getSession().getPasswordField();
-                    String defaultPassword = (String) dirInfo.defaultEntry.get(passwordField);
-                    if (defaultPassword != null
-                            && defaultPassword.equals(password)) {
-                        return true;
-                    }
-                }
-            }
+
         }
         return false;
     }
@@ -429,33 +372,20 @@ public class ResilientDirectorySession extends BaseSession {
     public DocumentModel getEntry(String id, boolean fetchReferences)
             throws DirectoryException {
         init();
-        source_loop: for (SourceInfo sourceInfo : sourceInfos) {
-            boolean isReadOnlyEntry = true;
-            final Map<String, Object> map = new HashMap<String, Object>();
+        final Map<String, Object> map = new HashMap<String, Object>();
+        for (SourceInfo sourceInfo : sourceInfos) {
 
-            for (SubDirectoryInfo dirInfo : sourceInfo.subDirectoryInfos) {
+
+            SubDirectoryInfo dirInfo = sourceInfo.subDirectoryInfo;
+
                 final DocumentModel entry = dirInfo.getSession().getEntry(id,
                         fetchReferences);
-                boolean isOptional = dirInfo.isOptional;
-                if (entry == null && !isOptional) {
-                    // not in this source
-                    continue source_loop;
-                }
-                if (entry != null && !isReadOnlyEntry(entry)) {
-                    // set readonly to false if at least one source is writable
-                    isReadOnlyEntry = false;
-                }
-                try {
-                    if (entry == null && isOptional
-                            && !dirInfo.getSession().isReadOnly()) {
-                        // set readonly to false if null entry is from optional
-                        // and writable directory
-                        isReadOnlyEntry = false;
-                    }
-                } catch (ClientException ce) {
-                    log.error("Cannot get readonly value from directory "
-                            + dirInfo.dirName, ce);
-                }
+
+                //TODO : Implement algorithm to retrieve entry :
+                // If we are on master, get the value and save/update it on slave(s)
+                //If the master is KO, fall back on slave(s)
+
+
                 for (Entry<String, String> e : dirInfo.toSource.entrySet()) {
                     if (entry != null) {
                         try {
@@ -474,10 +404,8 @@ public class ResilientDirectorySession extends BaseSession {
                     }
                 }
             }
-            // force the entry in readonly if it's defined on the ResilientDirectory
-            if (isReadOnly()) {
-                isReadOnlyEntry = true;
-            }
+            //TODO : Set readonly only when we are reading the master and if the master is in read-only mode
+            boolean isReadOnlyEntry = false;
             // ok we have the data
             try {
                 return BaseSession.createEntryModel(null, schemaName, id, map,
@@ -485,8 +413,7 @@ public class ResilientDirectorySession extends BaseSession {
             } catch (PropertyException e) {
                 throw new DirectoryException(e);
             }
-        }
-        return null;
+
     }
 
     @Override
@@ -505,7 +432,7 @@ public class ResilientDirectorySession extends BaseSession {
             final Map<String, Map<String, Object>> maps = new HashMap<String, Map<String, Object>>();
             // number of dirs seen for each entry
             final Map<String, Integer> counts = new HashMap<String, Integer>();
-            for (SubDirectoryInfo dirInfo : sourceInfo.requiredSubDirectoryInfos) {
+            SubDirectoryInfo dirInfo = sourceInfo.subDirectoryInfo;
                 final DocumentModelList entries = dirInfo.getSession().getEntries();
                 for (DocumentModel entry : entries) {
                     final String id = entry.getId();
@@ -528,45 +455,10 @@ public class ResilientDirectorySession extends BaseSession {
                         readOnlyEntries.add(id);
                     }
                 }
-            }
-            for (SubDirectoryInfo dirInfo : sourceInfo.optionalSubDirectoryInfos) {
-                final DocumentModelList entries = dirInfo.getSession().getEntries();
-                Set<String> existingIds = new HashSet<String>();
-                for (DocumentModel entry : entries) {
-                    final String id = entry.getId();
-                    final Map<String, Object> map = maps.get(id);
-                    if (map != null) {
-                        existingIds.add(id);
-                        // put entry data in map
-                        for (Entry<String, String> e : dirInfo.toSource.entrySet()) {
-                            map.put(e.getValue(),
-                                    entry.getProperty(dirInfo.dirSchemaName,
-                                            e.getKey()));
-                        }
-                    } else {
-                        log.warn(String.format(
-                                "Entry '%s' for source '%s' is present in optional directory '%s' "
-                                        + "but not in any required one. "
-                                        + "It will be skipped.", id,
-                                sourceInfo.source.name, dirInfo.dirName));
-                    }
-                }
-                for (Entry<String, Map<String, Object>> mapEntry : maps.entrySet()) {
-                    if (!existingIds.contains(mapEntry.getKey())) {
-                        final Map<String, Object> map = mapEntry.getValue();
-                        // put entry data in map
-                        for (Entry<String, String> e : dirInfo.toSource.entrySet()) {
-                            // fill with default values for this directory
-                            if (!map.containsKey(e.getValue())) {
-                                map.put(e.getValue(),
-                                        dirInfo.defaultEntry.get(e.getKey()));
-                            }
-                        }
-                    }
-                }
-            }
+
+            //TODO : deal with the code below...
             // now create entries for all full maps
-            int numdirs = sourceInfo.requiredSubDirectoryInfos.size();
+            int numdirs = 1;
             ((ArrayList<?>) results).ensureCapacity(results.size()
                     + maps.size());
             for (Entry<String, Map<String, Object>> e : maps.entrySet()) {
@@ -609,14 +501,13 @@ public class ResilientDirectorySession extends BaseSession {
             if (!sourceInfo.source.creation) {
                 continue;
             }
-            for (SubDirectoryInfo dirInfo : sourceInfo.subDirectoryInfos) {
+            SubDirectoryInfo dirInfo = sourceInfo.subDirectoryInfo;
                 Map<String, Object> map = new HashMap<String, Object>();
                 map.put(dirInfo.idField, id);
                 for (Entry<String, String> e : dirInfo.fromSource.entrySet()) {
                     map.put(e.getValue(), fieldMap.get(e.getKey()));
                 }
                 dirInfo.getSession().createEntry(map);
-            }
             return getEntry(id);
         }
         throw new DirectoryException(String.format(
@@ -632,10 +523,11 @@ public class ResilientDirectorySession extends BaseSession {
     @Override
     public void deleteEntry(String id) throws ClientException {
         init();
+        //TODO If we are removing a entry from the master, update the slave(s)
         for (SourceInfo sourceInfo : sourceInfos) {
-            for (SubDirectoryInfo dirInfo : sourceInfo.subDirectoryInfos) {
+            SubDirectoryInfo dirInfo = sourceInfo.subDirectoryInfo;
                 dirInfo.getSession().deleteEntry(id);
-            }
+
         }
     }
 
@@ -670,7 +562,7 @@ public class ResilientDirectorySession extends BaseSession {
             map.put(e.getValue(), fieldMap.get(e.getKey()));
         }
         if (map.size() > 1) {
-            if (canCreateIfOptional && dirInfo.isOptional && dirEntry == null) {
+            if (canCreateIfOptional && dirEntry == null) {
                 // if entry does not exist, create it
                 dirInfo.getSession().createEntry(map);
             } else {
@@ -695,16 +587,12 @@ public class ResilientDirectorySession extends BaseSession {
             // check if entry exists in this source, in case it can be created
             // in optional subdirectories
             boolean canCreateIfOptional = false;
-            for (SubDirectoryInfo dirInfo : sourceInfo.requiredSubDirectoryInfos) {
+            SubDirectoryInfo dirInfo = sourceInfo.subDirectoryInfo;
                 if (!canCreateIfOptional) {
                     canCreateIfOptional = dirInfo.getSession().getEntry(id) != null;
                 }
                 updateSubDirectoryEntry(dirInfo, fieldMap, id, false);
-            }
-            for (SubDirectoryInfo dirInfo : sourceInfo.optionalSubDirectoryInfos) {
-                updateSubDirectoryEntry(dirInfo, fieldMap, id,
-                        canCreateIfOptional);
-            }
+
         }
     }
 
@@ -733,135 +621,136 @@ public class ResilientDirectorySession extends BaseSession {
     public DocumentModelList query(Map<String, Serializable> filter,
             Set<String> fulltext, Map<String, String> orderBy,
             boolean fetchReferences) throws ClientException {
-        init();
-        // list of entries
-        final DocumentModelList results = new DocumentModelListImpl();
-        // entry ids already seen (mapped to the source name)
-        final Map<String, String> seen = new HashMap<String, String>();
-        if (fulltext == null) {
-            fulltext = Collections.emptySet();
-        }
-        Set<String> readOnlyEntries = new HashSet<String>();
-
-        for (SourceInfo sourceInfo : sourceInfos) {
-            // accumulated map for each entry
-            final Map<String, Map<String, Object>> maps = new HashMap<String, Map<String, Object>>();
-            // number of dirs seen for each entry
-            final Map<String, Integer> counts = new HashMap<String, Integer>();
-
-            // list of optional dirs where filter matches default values
-            List<SubDirectoryInfo> optionalDirsMatching = new ArrayList<SubDirectoryInfo>();
-            for (SubDirectoryInfo dirInfo : sourceInfo.subDirectoryInfos) {
-                // compute filter
-                final Map<String, Serializable> dirFilter = new HashMap<String, Serializable>();
-                for (Entry<String, Serializable> e : filter.entrySet()) {
-                    final String fieldName = dirInfo.fromSource.get(e.getKey());
-                    if (fieldName == null) {
-                        continue;
-                    }
-                    dirFilter.put(fieldName, e.getValue());
-                }
-                if (dirInfo.isOptional) {
-                    // check if filter matches directory default values
-                    boolean matches = true;
-                    for (Map.Entry<String, Serializable> dirFilterEntry : dirFilter.entrySet()) {
-                        Object defaultValue = dirInfo.defaultEntry.get(dirFilterEntry.getKey());
-                        Object filterValue = dirFilterEntry.getValue();
-                        if (defaultValue == null && filterValue != null) {
-                            matches = false;
-                        } else if (defaultValue != null
-                                && !defaultValue.equals(filterValue)) {
-                            matches = false;
-                        }
-                    }
-                    if (matches) {
-                        optionalDirsMatching.add(dirInfo);
-                    }
-                }
-                // compute fulltext
-                Set<String> dirFulltext = new HashSet<String>();
-                for (String sourceFieldName : fulltext) {
-                    final String fieldName = dirInfo.fromSource.get(sourceFieldName);
-                    if (fieldName != null) {
-                        dirFulltext.add(fieldName);
-                    }
-                }
-                // make query to subdirectory
-                DocumentModelList l = dirInfo.getSession().query(dirFilter,
-                        dirFulltext, null, fetchReferences);
-                for (DocumentModel entry : l) {
-                    final String id = entry.getId();
-                    Map<String, Object> map = maps.get(id);
-                    if (map == null) {
-                        map = new HashMap<String, Object>();
-                        maps.put(id, map);
-                        counts.put(id, 1);
-                    } else {
-                        counts.put(id, counts.get(id) + 1);
-                    }
-                    for (Entry<String, String> e : dirInfo.toSource.entrySet()) {
-                        map.put(e.getValue(),
-                                entry.getProperty(dirInfo.dirSchemaName,
-                                        e.getKey()));
-                    }
-                    if (BaseSession.isReadOnlyEntry(entry)) {
-                        readOnlyEntries.add(id);
-                    }
-                }
-            }
-            // add default entry values for optional dirs
-            for (SubDirectoryInfo dirInfo : optionalDirsMatching) {
-                // add entry for every data found in other dirs
-                Set<String> existingIds = new HashSet<String>(
-                        dirInfo.getSession().getProjection(
-                                Collections.<String, Serializable> emptyMap(),
-                                dirInfo.idField));
-                for (Entry<String, Map<String, Object>> result : maps.entrySet()) {
-                    final String id = result.getKey();
-                    if (!existingIds.contains(id)) {
-                        counts.put(id, counts.get(id) + 1);
-                        final Map<String, Object> map = result.getValue();
-                        for (Entry<String, String> e : dirInfo.toSource.entrySet()) {
-                            String value = e.getValue();
-                            if (!map.containsKey(value)) {
-                                map.put(value,
-                                        dirInfo.defaultEntry.get(e.getKey()));
-                            }
-                        }
-                    }
-                }
-            }
-            // intersection, ignore entries not in all subdirectories
-            final int numdirs = sourceInfo.subDirectoryInfos.size();
-            for (Iterator<String> it = maps.keySet().iterator(); it.hasNext();) {
-                final String id = it.next();
-                if (counts.get(id) != numdirs) {
-                    it.remove();
-                }
-            }
-            // now create entries
-            ((ArrayList<?>) results).ensureCapacity(results.size()
-                    + maps.size());
-            for (Entry<String, Map<String, Object>> e : maps.entrySet()) {
-                final String id = e.getKey();
-                if (seen.containsKey(id)) {
-                    log.warn(String.format(
-                            "Entry '%s' is present in source '%s' but also in source '%s'. "
-                                    + "The second one will be ignored.", id,
-                            seen.get(id), sourceInfo.source.name));
-                    continue;
-                }
-                final Map<String, Object> map = e.getValue();
-                seen.put(id, sourceInfo.source.name);
-                final DocumentModel entry = BaseSession.createEntryModel(null,
-                        schemaName, id, map, readOnlyEntries.contains(id));
-                results.add(entry);
-            }
-        }
-        if (orderBy != null && !orderBy.isEmpty()) {
-            directory.orderEntries(results, orderBy);
-        }
-        return results;
+//        init();
+//        // list of entries
+//        final DocumentModelList results = new DocumentModelListImpl();
+//        // entry ids already seen (mapped to the source name)
+//        final Map<String, String> seen = new HashMap<String, String>();
+//        if (fulltext == null) {
+//            fulltext = Collections.emptySet();
+//        }
+//        Set<String> readOnlyEntries = new HashSet<String>();
+//
+//        for (SourceInfo sourceInfo : sourceInfos) {
+//            // accumulated map for each entry
+//            final Map<String, Map<String, Object>> maps = new HashMap<String, Map<String, Object>>();
+//            // number of dirs seen for each entry
+//            final Map<String, Integer> counts = new HashMap<String, Integer>();
+//
+//            // list of optional dirs where filter matches default values
+//            List<SubDirectoryInfo> optionalDirsMatching = new ArrayList<SubDirectoryInfo>();
+//            for (SubDirectoryInfo dirInfo : sourceInfo.subDirectoryInfos) {
+//                // compute filter
+//                final Map<String, Serializable> dirFilter = new HashMap<String, Serializable>();
+//                for (Entry<String, Serializable> e : filter.entrySet()) {
+//                    final String fieldName = dirInfo.fromSource.get(e.getKey());
+//                    if (fieldName == null) {
+//                        continue;
+//                    }
+//                    dirFilter.put(fieldName, e.getValue());
+//                }
+//                if (dirInfo.isOptional) {
+//                    // check if filter matches directory default values
+//                    boolean matches = true;
+//                    for (Map.Entry<String, Serializable> dirFilterEntry : dirFilter.entrySet()) {
+//                        Object defaultValue = dirInfo.defaultEntry.get(dirFilterEntry.getKey());
+//                        Object filterValue = dirFilterEntry.getValue();
+//                        if (defaultValue == null && filterValue != null) {
+//                            matches = false;
+//                        } else if (defaultValue != null
+//                                && !defaultValue.equals(filterValue)) {
+//                            matches = false;
+//                        }
+//                    }
+//                    if (matches) {
+//                        optionalDirsMatching.add(dirInfo);
+//                    }
+//                }
+//                // compute fulltext
+//                Set<String> dirFulltext = new HashSet<String>();
+//                for (String sourceFieldName : fulltext) {
+//                    final String fieldName = dirInfo.fromSource.get(sourceFieldName);
+//                    if (fieldName != null) {
+//                        dirFulltext.add(fieldName);
+//                    }
+//                }
+//                // make query to subdirectory
+//                DocumentModelList l = dirInfo.getSession().query(dirFilter,
+//                        dirFulltext, null, fetchReferences);
+//                for (DocumentModel entry : l) {
+//                    final String id = entry.getId();
+//                    Map<String, Object> map = maps.get(id);
+//                    if (map == null) {
+//                        map = new HashMap<String, Object>();
+//                        maps.put(id, map);
+//                        counts.put(id, 1);
+//                    } else {
+//                        counts.put(id, counts.get(id) + 1);
+//                    }
+//                    for (Entry<String, String> e : dirInfo.toSource.entrySet()) {
+//                        map.put(e.getValue(),
+//                                entry.getProperty(dirInfo.dirSchemaName,
+//                                        e.getKey()));
+//                    }
+//                    if (BaseSession.isReadOnlyEntry(entry)) {
+//                        readOnlyEntries.add(id);
+//                    }
+//                }
+//            }
+//            // add default entry values for optional dirs
+//            for (SubDirectoryInfo dirInfo : optionalDirsMatching) {
+//                // add entry for every data found in other dirs
+//                Set<String> existingIds = new HashSet<String>(
+//                        dirInfo.getSession().getProjection(
+//                                Collections.<String, Serializable> emptyMap(),
+//                                dirInfo.idField));
+//                for (Entry<String, Map<String, Object>> result : maps.entrySet()) {
+//                    final String id = result.getKey();
+//                    if (!existingIds.contains(id)) {
+//                        counts.put(id, counts.get(id) + 1);
+//                        final Map<String, Object> map = result.getValue();
+//                        for (Entry<String, String> e : dirInfo.toSource.entrySet()) {
+//                            String value = e.getValue();
+//                            if (!map.containsKey(value)) {
+//                                map.put(value,
+//                                        dirInfo.defaultEntry.get(e.getKey()));
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//            // intersection, ignore entries not in all subdirectories
+//            final int numdirs = sourceInfo.subDirectoryInfos.size();
+//            for (Iterator<String> it = maps.keySet().iterator(); it.hasNext();) {
+//                final String id = it.next();
+//                if (counts.get(id) != numdirs) {
+//                    it.remove();
+//                }
+//            }
+//            // now create entries
+//            ((ArrayList<?>) results).ensureCapacity(results.size()
+//                    + maps.size());
+//            for (Entry<String, Map<String, Object>> e : maps.entrySet()) {
+//                final String id = e.getKey();
+//                if (seen.containsKey(id)) {
+//                    log.warn(String.format(
+//                            "Entry '%s' is present in source '%s' but also in source '%s'. "
+//                                    + "The second one will be ignored.", id,
+//                            seen.get(id), sourceInfo.source.name));
+//                    continue;
+//                }
+//                final Map<String, Object> map = e.getValue();
+//                seen.put(id, sourceInfo.source.name);
+//                final DocumentModel entry = BaseSession.createEntryModel(null,
+//                        schemaName, id, map, readOnlyEntries.contains(id));
+//                results.add(entry);
+//            }
+//        }
+//        if (orderBy != null && !orderBy.isEmpty()) {
+//            directory.orderEntries(results, orderBy);
+//        }
+//        return results;
+        return null;
     }
 
     @Override
@@ -904,12 +793,11 @@ public class ResilientDirectorySession extends BaseSession {
     public boolean hasEntry(String id) throws ClientException {
         init();
         for (SourceInfo sourceInfo : sourceInfos) {
-            for (SubDirectoryInfo dirInfo : sourceInfo.subDirectoryInfos) {
+            SubDirectoryInfo dirInfo = sourceInfo.subDirectoryInfo;
                 Session session = dirInfo.getSession();
                 if (session.hasEntry(id)) {
                     return true;
                 }
-            }
         }
         return false;
     }

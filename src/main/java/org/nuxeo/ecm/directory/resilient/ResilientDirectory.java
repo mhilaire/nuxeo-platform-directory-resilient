@@ -56,7 +56,8 @@ public class ResilientDirectory extends AbstractDirectory {
 
     @Override
     public String getParentDirectory() {
-        return null; // no parent directories are specified for multi
+        //TODO : retrieve parent directory
+        return null;
     }
 
     @Override
@@ -90,13 +91,13 @@ public class ResilientDirectory extends AbstractDirectory {
         getCache().invalidateAll();
         // and also invalidates the cache from the source directories
         for (SourceDescriptor src : descriptor.sources) {
-            for (SubDirectoryDescriptor sub : src.subDirectories) {
+            SubDirectoryDescriptor sub = src.subDirectory;
                 Directory dir = ResilientDirectoryFactory.getDirectoryService().getDirectory(
                         sub.name);
                 if (dir != null) {
                     dir.invalidateDirectoryCache();
                 }
-            }
+
         }
     }
 
