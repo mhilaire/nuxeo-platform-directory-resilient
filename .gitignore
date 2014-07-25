@@ -1,10 +1,13 @@
-# Compiled source #
-###################
 *.class
- 
-# All compiled resources by maven #
-###################################
-target/*
+
+# Package Files #
+*.jar
+*.ear
+.project
+.settings
+.classpath
+target
+bin
  
 # Logs and databases #
 ######################

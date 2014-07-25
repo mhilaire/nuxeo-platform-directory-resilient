@@ -23,6 +23,7 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.nuxeo.ecm.core.api.ClientException;
 import org.nuxeo.ecm.directory.Directory;
 import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.runtime.model.ContributionFragmentRegistry;
@@ -59,7 +60,12 @@ public class ResilentDirectoryRegistry extends
                 log.info("Directory registered: " + name);
             }
             descriptors.put(id, descriptor);
-            ResilientDirectory directory = new ResilientDirectory(descriptor);
+            ResilientDirectory directory;
+            try {
+                directory = new ResilientDirectory(descriptor);
+            } catch (ClientException e) {
+                throw new RuntimeException(e);
+            }
             directories.put(name, directory);
         }
     }

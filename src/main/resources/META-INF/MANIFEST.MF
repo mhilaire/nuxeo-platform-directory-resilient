@@ -21,8 +21,7 @@ Import-Package: javax.annotation;version="1.0",
  org.nuxeo.osgi,
  org.nuxeo.runtime,
  org.nuxeo.runtime.api,
- org.nuxeo.runtime.model,
- org.nuxeo.ecm.directory.multi
+ org.nuxeo.runtime.model
 Bundle-SymbolicName: org.nuxeo.ecm.directory.resilient;singleton:=true
 Originally-Created-By: 1.6.0_20 (Sun Microsystems Inc.)
 Require-Bundle: org.nuxeo.ecm.directory
