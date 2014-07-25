@@ -100,6 +100,7 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         e = new HashMap<String, Object>();
         e.put("uid", "1");
         e.put("foo", "foo1");
+        e.put("bar", "bar1");
         dir1.createEntry(e);
 
 
@@ -107,6 +108,13 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         memdir2 = new MemoryDirectory("dir2", "schema1", schema1Set, "uid",
                 "foo");
         memoryDirectoryFactory.registerDirectory(memdir2);
+
+        Session dir2 = memdir2.getSession();
+        e = new HashMap<String, Object>();
+        e.put("uid", "2");
+        e.put("foo", "foo2");
+        e.put("bar", "bar2");
+        dir2.createEntry(e);
 
         // Bundle to be tested
         deployBundle("org.nuxeo.ecm.directory.resilient");
@@ -129,6 +137,30 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         memoryDirectoryFactory.unregisterDirectory(memdir2);
         directoryService.unregisterDirectory("memdirs", memoryDirectoryFactory);
         super.tearDown();
+    }
+
+    @Test
+    public void testCreateEntry() throws Exception {
+        Session dir1 = memdir1.getSession();
+        Session dir2 = memdir2.getSession();
+
+        Map<String, Object> e;
+
+        assertEquals("foo2", dir2.getEntry("2").getProperty("schema1", "foo"));
+
+        e = new HashMap<String, Object>();
+        e.put("uid", "2");
+        e.put("foo", "foo3");
+        e.put("bar", "bar3");
+        DocumentModel doc =  dir.createEntry(e);
+
+
+
+        assertFalse(dir1.getEntry("2") == null);
+        assertFalse(dir2.getEntry("2") == null);
+        assertEquals("bar3", doc.getProperty("schema1", "bar"));
+        assertEquals("foo3", dir1.getEntry("2").getProperty("schema1", "foo"));
+        assertEquals("foo3", dir2.getEntry("2").getProperty("schema1", "foo"));
     }
 
     @Test
@@ -158,6 +190,21 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
     }
 
     @Test
+    public void testDeleteOnGetEntry() throws Exception {
+        DocumentModel entry;
+
+        Session dir2 = memdir2.getSession();
+        entry = dir2.getEntry("2") ;
+        assertFalse(entry == null);
+
+        entry = dir.getEntry("2");
+        assertNull(entry);
+
+        entry = dir2.getEntry("2") ;
+        assertNull(entry);
+    }
+
+    @Test
     public void testGetEntries() throws Exception {
 //        DocumentModelList l;
 //        l = dir.getEntries();
@@ -181,6 +228,7 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         Session dir2 = memdir2.getSession();
         assertTrue(dir.authenticate("1", "foo1"));
         assertFalse(dir.authenticate("1", "haha"));
+        assertFalse(dir.authenticate("2", "foo2"));
 
     }
 
@@ -194,6 +242,8 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
 //        assertEquals(2, dir2.getEntries().size());
         dir.deleteEntry("1");
         assertNull(dir.getEntry("1"));
+        assertNull(dir1.getEntry("1"));
+        assertNull(dir2.getEntry("1"));
 //        assertEquals(3, dir.getEntries().size());
 //        assertEquals(1, dir1.getEntries().size());
 //        assertEquals(1, dir2.getEntries().size());
