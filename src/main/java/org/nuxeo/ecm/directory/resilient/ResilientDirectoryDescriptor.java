@@ -38,8 +38,8 @@ public class ResilientDirectoryDescriptor implements Cloneable {
     @XNode("@remove")
     public boolean remove = false;
 
-    @XNodeList(value = "source", type = SubDirectoryDescriptor[].class, componentType = SubDirectoryDescriptor.class)
-    protected SubDirectoryDescriptor[] sources;
+    @XNodeList(value = "subDirectory", type = SubDirectoryDescriptor[].class, componentType = SubDirectoryDescriptor.class)
+    protected SubDirectoryDescriptor[] subDirectories;
 
     public void merge(ResilientDirectoryDescriptor other) {
         merge(other, false);
@@ -50,16 +50,16 @@ public class ResilientDirectoryDescriptor implements Cloneable {
         if (other.querySizeLimit != null || overwrite) {
             querySizeLimit = other.querySizeLimit;
         }
-        if (other.sources != null || overwrite) {
-            if (sources == null) {
-                sources = other.sources;
+        if (other.subDirectories != null || overwrite) {
+            if (subDirectories == null) {
+                subDirectories = other.subDirectories;
             } else {
-                SubDirectoryDescriptor[] s = new SubDirectoryDescriptor[sources.length
-                        + other.sources.length];
-                System.arraycopy(sources, 0, s, 0, sources.length);
-                System.arraycopy(other.sources, 0, s, sources.length,
-                        other.sources.length);
-                sources = s;
+                SubDirectoryDescriptor[] s = new SubDirectoryDescriptor[subDirectories.length
+                        + other.subDirectories.length];
+                System.arraycopy(subDirectories, 0, s, 0, subDirectories.length);
+                System.arraycopy(other.subDirectories, 0, s, subDirectories.length,
+                        other.subDirectories.length);
+                subDirectories = s;
             }
         }
     }
@@ -73,10 +73,10 @@ public class ResilientDirectoryDescriptor implements Cloneable {
         clone.name = name;
         clone.querySizeLimit = querySizeLimit;
         clone.remove = remove;
-        if (sources != null) {
-            clone.sources = new SubDirectoryDescriptor[sources.length];
-            for (int i = 0; i < sources.length; i++) {
-                clone.sources[i] = sources[i].clone();
+        if (subDirectories != null) {
+            clone.subDirectories = new SubDirectoryDescriptor[subDirectories.length];
+            for (int i = 0; i < subDirectories.length; i++) {
+                clone.subDirectories[i] = subDirectories[i].clone();
             }
         }
         return clone;

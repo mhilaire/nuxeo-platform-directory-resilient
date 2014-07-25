@@ -71,12 +71,7 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         deployBundle("org.nuxeo.ecm.core.schema");
         deployBundle("org.nuxeo.ecm.directory");
 
-        // Bundle to be tested
-        deployBundle("org.nuxeo.ecm.directory.resilient");
-
-        // Config for the tested bundle
         deployContrib(TEST_BUNDLE, "schemas-config.xml");
-        deployContrib(TEST_BUNDLE, "directories-config.xml");
 
         // mem dir factory
         directoryService = Framework.getLocalService(DirectoryService.class);
@@ -113,12 +108,18 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
                 "foo");
         memoryDirectoryFactory.registerDirectory(memdir2);
 
+        // Bundle to be tested
+        deployBundle("org.nuxeo.ecm.directory.resilient");
 
+        // Config for the tested bundle
+        deployContrib(TEST_BUNDLE, "directories-config.xml");
 
 
         // the multi directory
         multiDir = (ResilientDirectory) directoryService.getDirectory("resilient");
         dir = (ResilientDirectorySession) multiDir.getSession();
+
+
     }
 
     @Override
@@ -178,8 +179,8 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         // sub dirs
         Session dir1 = memdir1.getSession();
         Session dir2 = memdir2.getSession();
-        assertTrue(dir1.authenticate("1", "foo1"));
-        assertFalse(dir1.authenticate("1", "haha"));
+        assertTrue(dir.authenticate("1", "foo1"));
+        assertFalse(dir.authenticate("1", "haha"));
 
     }
 

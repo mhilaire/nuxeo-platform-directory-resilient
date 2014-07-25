@@ -130,7 +130,7 @@ public class ResilientDirectorySession extends BaseSession {
 
         List<SubDirectoryInfo> newSlaveSubDirectoryInfos = new ArrayList<SubDirectoryInfo>(
                 2);
-        for (SubDirectoryDescriptor subDir : descriptor.sources) {
+        for (SubDirectoryDescriptor subDir : descriptor.subDirectories) {
 
             final String dirName = subDir.name;
             final String dirSchemaName = directoryService.getDirectorySchema(dirName);
@@ -141,7 +141,7 @@ public class ResilientDirectorySession extends BaseSession {
             SubDirectoryInfo subDirectoryInfo = new SubDirectoryInfo(dirName,
                     dirSchemaName, dirIdField, dirPwdField);
 
-            if (subDir.master) {
+            if (subDir.isMaster()) {
                 if (masterSubDirectoryInfo == null) {
                     masterSubDirectoryInfo = subDirectoryInfo;
                 }
@@ -385,11 +385,7 @@ public class ResilientDirectorySession extends BaseSession {
         return null;
     }
 
-    private void deleteOnSlaves(String username, String password) {
-        // Create entry for the given username/password
-        // synchronizeMasterOnSlaves(entry);
 
-    }
 
     @Override
     public boolean authenticate(String username, String password)
