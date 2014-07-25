@@ -64,7 +64,7 @@ public class ResilientReference extends AbstractReference {
     protected List<String> doCollect(Collector extractor)
             throws DirectoryException {
         Set<String> ids = new HashSet<String>();
-        for (SubDirectoryDescriptor sub : dir.getDescriptor().sources) {
+        for (SubDirectoryDescriptor sub : dir.getDescriptor().subDirectories) {
 
             Directory dir = ResilientDirectoryFactory.getDirectoryService().getDirectory(
                     sub.name);

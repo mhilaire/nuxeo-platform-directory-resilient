@@ -17,10 +17,8 @@
   <extension-point name="directories">
     <object
         class="org.nuxeo.ecm.directory.resilient.ResilientDirectoryDescriptor"/>
-    <object class="org.nuxeo.ecm.directory.resilient.SourceDescriptor"/>
     <object
-        class="org.nuxeo.ecm.directory.multi.SubDirectoryDescriptor"/>
-    <object class="org.nuxeo.ecm.directory.multi.FieldDescriptor"/>
+        class="org.nuxeo.ecm.directory.resilient.SubDirectoryDescriptor"/>
 
     <documentation>
       This extension point can be used to register new
@@ -30,53 +28,18 @@
       <code>
         ...
         <directory name="userDirectory">
-          <schema>user</schema>
-          <idField>username</idField>
-          <passwordField>password</passwordField>
-
+         
           <querySizeLimit>1000</querySizeLimit>
 
-          <source name="ldapusers">
-            <subDirectory name="authinfo">
-              <field for="email">mail</field>
-            </subDirectory>
-            <subDirectory name="userinfo">
-              <field for="firstName">givenName</field>
-              <field for="lastName">sn</field>
-              <field for="company">o</field>
-            </subDirectory>
-          </source>
+            <subDirectory name="ldapusers" master="true"/>
 
-          <source name="sqlusers" creation="true">
             <subDirectory name="sqlUserDirectory"/>
-          </source>
 
         </directory>
         ...
       </code>
 
-      Here is the description for each field:
-      <ul>
-        <li>
-          schema - the name of the schema to be used for the directory
-          entries.
-        </li>
-        <li>
-          idField - the id field designs the primary key in the table,
-          used for retrieving entries by id.
-        </li>
-        <li>
-          querySizeLimit - the maximum number of results that the
-          queries on this directory should return; if there are more
-          results than this, an exception will be raised.
-        </li>
-        <li>
-          init-dependencies - a list of directories that should be
-          initialized before this one
-        </li>
-      </ul>
-      The references tag is used to define relations between
-      directories. (TODO: describe the references types.)
+      
     </documentation>
   </extension-point>
 

@@ -32,13 +32,16 @@ public class SubDirectoryDescriptor {
     public String name;
 
     @XNode("@master")
-    public boolean master;
+    public String master;
 
     @Override
     public String toString() {
         return String.format("{subdirectory name=%s ", name);
     }
 
+    boolean isMaster(){
+        return Boolean.parseBoolean(master);
+    }
     /**
      * @since 5.6
      */
@@ -46,7 +49,7 @@ public class SubDirectoryDescriptor {
     public SubDirectoryDescriptor clone() {
         SubDirectoryDescriptor clone = new SubDirectoryDescriptor();
         clone.name = name;
-
+        clone.master = master;
         return clone;
     }
 }
