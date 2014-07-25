@@ -325,12 +325,21 @@ public class ResilientDirectorySession extends BaseSession {
                 for (SubDirectoryInfo subDirInfo : slaveSubDirectoryInfos) {
                     try {
                         if (subDirInfo.getSession().hasEntry(entryId)) {
+                            final DocumentModel entry = BaseSession.createEntryModel(null,
+                                    schemaName, entryId, null);
+                            // Do not set dataModel values with constructor to force fields dirty
+                            entry.getDataModel(schemaName).setMap(docModel.getProperties(schemaName));
 
-                            subDirInfo.getSession().updateEntry(docModel);
+                            subDirInfo.getSession().updateEntry(entry);
 
                         }else
                         {
-                            subDirInfo.getSession().createEntry(docModel);
+                            final DocumentModel entry = BaseSession.createEntryModel(null,
+                                    schemaName, entryId, null);
+                            // Do not set dataModel values with constructor to force fields dirty
+                            entry.getDataModel(schemaName).setMap(docModel.getProperties(schemaName));
+
+                            subDirInfo.getSession().createEntry(entry);
                         }
                     }
 
@@ -564,12 +573,16 @@ public class ResilientDirectorySession extends BaseSession {
         }
         final String id = String.valueOf(rawid); // XXX allow longs too
 
-        if (masterSubDirectoryInfo.getSession().hasEntry(id)) {
-            // if master has the entry make sure slave get it too
-            updateMasterOnSlaves(id, true);
-        }
 
-        return masterSubDirectoryInfo.getSession().createEntry(fieldMap);
+        final DocumentModel entry = BaseSession.createEntryModel(null,
+                schemaName, id, null);
+        // Do not set dataModel values with constructor to force fields dirty
+        entry.getDataModel(schemaName).setMap(fieldMap);
+
+
+        masterSubDirectoryInfo.getSession().createEntry(entry);
+        updateMasterOnSlaves(id, true);
+        return entry;
 
     }
 
