@@ -14,20 +14,19 @@
  * Contributors:
  *     Florent Guillaume
  *
- * $Id: SourceDescriptor.java 24597 2007-09-05 16:04:04Z fguillaume $
+ * $Id: SubDirectoryDescriptor.java 24597 2007-09-05 16:04:04Z fguillaume $
  */
 
 package org.nuxeo.ecm.directory.resilient;
 
 import org.nuxeo.common.xmap.annotation.XNode;
 import org.nuxeo.common.xmap.annotation.XObject;
-import org.nuxeo.ecm.directory.multi.SubDirectoryDescriptor;
 
 /**
  * @author Florent Guillaume
  */
-@XObject("source")
-public class SourceDescriptor {
+@XObject("subDirectory")
+public class SubDirectoryDescriptor {
 
     @XNode("@name")
     public String name;
@@ -35,30 +34,19 @@ public class SourceDescriptor {
     @XNode("@master")
     public boolean master;
 
-    @XNode("@creation")
-    public boolean creation;
-
-    @XNode(value = "subDirectory")
-    public SubDirectoryDescriptor subDirectory;
-
     @Override
     public String toString() {
-        return String.format("{source name=%s subDirectory=%s", name,
-                subDirectory);
+        return String.format("{subdirectory name=%s ", name);
     }
 
     /**
      * @since 5.6
      */
     @Override
-    public SourceDescriptor clone() {
-        SourceDescriptor clone = new SourceDescriptor();
+    public SubDirectoryDescriptor clone() {
+        SubDirectoryDescriptor clone = new SubDirectoryDescriptor();
         clone.name = name;
-        clone.creation = creation;
-        clone.master = master;
-        clone.subDirectory = subDirectory;
 
         return clone;
     }
-
 }

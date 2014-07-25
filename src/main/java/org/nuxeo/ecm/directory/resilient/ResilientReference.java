@@ -31,7 +31,6 @@ import org.nuxeo.ecm.directory.Directory;
 import org.nuxeo.ecm.directory.DirectoryEntryNotFoundException;
 import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.Reference;
-import org.nuxeo.ecm.directory.multi.SubDirectoryDescriptor;
 
 public class ResilientReference extends AbstractReference {
 
@@ -65,8 +64,7 @@ public class ResilientReference extends AbstractReference {
     protected List<String> doCollect(Collector extractor)
             throws DirectoryException {
         Set<String> ids = new HashSet<String>();
-        for (SourceDescriptor src : dir.getDescriptor().sources) {
-            SubDirectoryDescriptor sub = src.subDirectory;
+        for (SubDirectoryDescriptor sub : dir.getDescriptor().sources) {
 
             Directory dir = ResilientDirectoryFactory.getDirectoryService().getDirectory(
                     sub.name);

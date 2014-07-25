@@ -32,44 +32,21 @@ public class ResilientDirectoryDescriptor implements Cloneable {
     @XNode("@name")
     public String name;
 
-    @XNode("schema")
-    protected String schemaName;
-
-    @XNode("idField")
-    protected String idField;
-
-    @XNode("passwordField")
-    protected String passwordField;
-
-    @XNode("readOnly")
-    public Boolean readOnly;
-
     @XNode("querySizeLimit")
     public Integer querySizeLimit;
 
     @XNode("@remove")
     public boolean remove = false;
 
-    @XNodeList(value = "source", type = SourceDescriptor[].class, componentType = SourceDescriptor.class)
-    protected SourceDescriptor[] sources;
+    @XNodeList(value = "source", type = SubDirectoryDescriptor[].class, componentType = SubDirectoryDescriptor.class)
+    protected SubDirectoryDescriptor[] sources;
 
     public void merge(ResilientDirectoryDescriptor other) {
         merge(other, false);
     }
 
     public void merge(ResilientDirectoryDescriptor other, boolean overwrite) {
-        if (other.schemaName != null || overwrite) {
-            schemaName = other.schemaName;
-        }
-        if (other.idField != null || overwrite) {
-            idField = other.idField;
-        }
-        if (other.passwordField != null || overwrite) {
-            passwordField = other.passwordField;
-        }
-        if (other.readOnly != null || overwrite) {
-            readOnly = other.readOnly;
-        }
+
         if (other.querySizeLimit != null || overwrite) {
             querySizeLimit = other.querySizeLimit;
         }
@@ -77,7 +54,7 @@ public class ResilientDirectoryDescriptor implements Cloneable {
             if (sources == null) {
                 sources = other.sources;
             } else {
-                SourceDescriptor[] s = new SourceDescriptor[sources.length
+                SubDirectoryDescriptor[] s = new SubDirectoryDescriptor[sources.length
                         + other.sources.length];
                 System.arraycopy(sources, 0, s, 0, sources.length);
                 System.arraycopy(other.sources, 0, s, sources.length,
@@ -94,14 +71,10 @@ public class ResilientDirectoryDescriptor implements Cloneable {
     public ResilientDirectoryDescriptor clone() {
         ResilientDirectoryDescriptor clone = new ResilientDirectoryDescriptor();
         clone.name = name;
-        clone.schemaName = schemaName;
-        clone.idField = idField;
-        clone.passwordField = passwordField;
-        clone.readOnly = readOnly;
         clone.querySizeLimit = querySizeLimit;
         clone.remove = remove;
         if (sources != null) {
-            clone.sources = new SourceDescriptor[sources.length];
+            clone.sources = new SubDirectoryDescriptor[sources.length];
             for (int i = 0; i < sources.length; i++) {
                 clone.sources[i] = sources[i].clone();
             }

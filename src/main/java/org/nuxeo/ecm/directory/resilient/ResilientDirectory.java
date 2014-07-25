@@ -19,12 +19,21 @@
 
 package org.nuxeo.ecm.directory.resilient;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import org.nuxeo.ecm.core.api.ClientException;
+import org.nuxeo.ecm.core.schema.SchemaManager;
+import org.nuxeo.ecm.core.schema.types.Field;
+import org.nuxeo.ecm.core.schema.types.Schema;
 import org.nuxeo.ecm.directory.AbstractDirectory;
 import org.nuxeo.ecm.directory.Directory;
 import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.Reference;
 import org.nuxeo.ecm.directory.Session;
-import org.nuxeo.ecm.directory.multi.SubDirectoryDescriptor;
+import org.nuxeo.ecm.directory.ldap.LDAPDirectory;
+import org.nuxeo.ecm.directory.sql.SQLDirectory;
+import org.nuxeo.runtime.api.Framework;
 
 /**
  * @author Florent Guillaume
@@ -33,11 +42,135 @@ import org.nuxeo.ecm.directory.multi.SubDirectoryDescriptor;
  */
 public class ResilientDirectory extends AbstractDirectory {
 
+    private String schemaName = null;
+
+    private String idField = null;
+
+    private String passwordField = null;
+
+    private boolean masterIsLDAP = false;
+
     private final ResilientDirectoryDescriptor descriptor;
 
-    public ResilientDirectory(ResilientDirectoryDescriptor descriptor) {
+    public ResilientDirectory(ResilientDirectoryDescriptor descriptor)
+            throws ClientException {
         super(descriptor.name);
         this.descriptor = descriptor;
+
+        String masterSchemaName = null;
+        // Find the master subdirectory and init resilient directory from the
+        // master
+        for (SubDirectoryDescriptor sub : descriptor.sources) {
+            Directory dir = ResilientDirectoryFactory.getDirectoryService().getDirectory(
+                    sub.name);
+            if (sub.master && masterSchemaName != null) {
+                if (dir != null) {
+                    schemaName = dir.getSchema();
+                    idField = dir.getIdField();
+                    passwordField = dir.getPasswordField();
+                    if (dir instanceof LDAPDirectory) {
+                        masterIsLDAP = true;
+                    }
+                    SchemaManager sm = Framework.getLocalService(SchemaManager.class);
+                    Schema sch = sm.getSchema(schemaName);
+                    if (sch == null) {
+                        throw new DirectoryException(
+                                String.format(
+                                        "Unknown schema '%s' for master subdirectory '%s' ",
+                                        schemaName, dir.getName()));
+                    }
+                    final Set<String> sourceFields = new HashSet<String>();
+                    for (Field f : sch.getFields()) {
+                        sourceFields.add(f.getName().getLocalName());
+                    }
+                    if (!sourceFields.contains(idField)) {
+                        throw new DirectoryException(
+                                String.format(
+                                        "Directory '%s' schema '%s' has no id field '%s'",
+                                        dir.getName(), schemaName, idField));
+                    }
+                    if (masterIsLDAP) {
+                        if (passwordField == null) {
+                            throw new DirectoryException(String.format(
+                                    "Master LDAP subdirectory '%s' "
+                                            + "has not a password field !",
+                                    dir.getName()));
+                        }
+                    }
+                    masterSchemaName = schemaName;
+
+                }
+
+                else {
+                    throw new DirectoryException(String.format(
+                            "Unknown directory '%s' !", sub.name));
+                }
+            } else if (sub.master && masterSchemaName != null) {
+                throw new DirectoryException(
+                        String.format(
+                                "Directory '%s' subdir '%s' "
+                                        + "define a master source but another one exist !",
+                                descriptor.name, sub.name));
+            }
+            // At this point we must have found a master
+            if (masterSchemaName == null) {
+                throw new DirectoryException(String.format(
+                        "Resilient Directory '%s' has no master source !",
+                        descriptor.name));
+            } else {
+                if (!checkSlaveSubDirectory(masterSchemaName)) {
+                    throw new DirectoryException(String.format(
+                            "Resilient Directory '%s' has no slave source !",
+                            descriptor.name));
+
+                }
+            }
+        }
+
+    }
+
+    private boolean checkSlaveSubDirectory(String masterSchemaName)
+            throws ClientException {
+        boolean slaveFound = false;
+        for (SubDirectoryDescriptor sub : descriptor.sources) {
+            Directory subDir = ResilientDirectoryFactory.getDirectoryService().getDirectory(
+                    sub.name);
+            if (!sub.master) {
+
+                // Check each schema's slaves that match the master schema
+                if (!subDir.getSchema().equalsIgnoreCase(masterSchemaName)) {
+                    throw new DirectoryException(
+                            String.format(
+                                    "ResilientDirectory '%s' reference a slave directory '%s' that has not the same schema than the master schema %s!",
+                                    descriptor.name, subDir.getName(),
+                                    masterSchemaName));
+                } else if (subDir.getIdField().equalsIgnoreCase(idField)
+                        || subDir.getPasswordField().equalsIgnoreCase(
+                                passwordField)) {
+                    throw new DirectoryException(
+                            String.format(
+                                    "ResilientDirectory '%s' reference a slave directory '%s' that has not the same idField/passwordField than the master !",
+                                    descriptor.name, subDir.getName()));
+                }
+
+                else if (subDir.getSession().isReadOnly()) {
+                    throw new DirectoryException(
+                            String.format(
+                                    "ResilientDirectory '%s' reference a slave directory '%s' that is in read-only mode !",
+                                    descriptor.name, subDir.getName()));
+                } else if (subDir instanceof SQLDirectory) {
+                    if (((SQLDirectory) subDir).getConfig().autoincrementIdField) {
+                        throw new DirectoryException(
+                                String.format(
+                                        "ResilientDirectory '%s' reference a slave SQL directory '%s' that use auto-increment id! This is still not supported by the resilient directory.",
+                                        descriptor.name, subDir.getName()));
+                    }
+                } else {
+                    slaveFound = true;
+                }
+            }
+        }
+        return slaveFound;
     }
 
     protected ResilientDirectoryDescriptor getDescriptor() {
@@ -51,23 +184,26 @@ public class ResilientDirectory extends AbstractDirectory {
 
     @Override
     public String getSchema() {
-        return descriptor.schemaName;
+        return schemaName;
     }
 
     @Override
     public String getParentDirectory() {
-        //TODO : retrieve parent directory
         return null;
     }
 
     @Override
     public String getIdField() {
-        return descriptor.idField;
+        return idField;
     }
 
     @Override
     public String getPasswordField() {
-        return descriptor.passwordField;
+        return passwordField;
+    }
+
+    public boolean masterIsLDAP() {
+        return masterIsLDAP;
     }
 
     @Override
@@ -90,13 +226,12 @@ public class ResilientDirectory extends AbstractDirectory {
     public void invalidateDirectoryCache() throws DirectoryException {
         getCache().invalidateAll();
         // and also invalidates the cache from the source directories
-        for (SourceDescriptor src : descriptor.sources) {
-            SubDirectoryDescriptor sub = src.subDirectory;
-                Directory dir = ResilientDirectoryFactory.getDirectoryService().getDirectory(
-                        sub.name);
-                if (dir != null) {
-                    dir.invalidateDirectoryCache();
-                }
+        for (SubDirectoryDescriptor sub : descriptor.sources) {
+            Directory dir = ResilientDirectoryFactory.getDirectoryService().getDirectory(
+                    sub.name);
+            if (dir != null) {
+                dir.invalidateDirectoryCache();
+            }
 
         }
     }

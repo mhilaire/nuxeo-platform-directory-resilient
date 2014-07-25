@@ -6,19 +6,12 @@
     point="directories">
 
     <directory name="resilient">
-      <schema>schema1</schema>
-      <idField>uid</idField>
-      <passwordField>foo</passwordField>
 
-      <source name="source1" creation="false">
-        <subDirectory name="dir1">
+        <subDirectory name="dir1" master="true">
         </subDirectory>
-      </source>
 
-      <source name="source2">
         <subDirectory name="dir2">
         </subDirectory>
-      </source>
     </directory>
 
 
