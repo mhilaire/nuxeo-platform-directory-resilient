@@ -244,21 +244,12 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         Session dir1 = memdir1.getSession();
         Session dir2 = memdir2.getSession();
         dir.deleteEntry("no-such-entry");
-//        assertEquals(4, dir.getEntries().size());
-//        assertEquals(2, dir1.getEntries().size());
-//        assertEquals(2, dir2.getEntries().size());
+        dir.deleteEntry("2");
         dir.deleteEntry("1");
         assertNull(dir.getEntry("1"));
         assertNull(dir1.getEntry("1"));
         assertNull(dir2.getEntry("1"));
-//        assertEquals(3, dir.getEntries().size());
-//        assertEquals(1, dir1.getEntries().size());
-//        assertEquals(1, dir2.getEntries().size());
-//        dir.deleteEntry("3");
-//        assertNull(dir.getEntry("3"));
-//        assertEquals(2, dir.getEntries().size());
-//        assertEquals(1, dir1.getEntries().size());
-//        assertEquals(1, dir2.getEntries().size());
+        assertNull(dir2.getEntry("2"));
     }
 
     @Test
