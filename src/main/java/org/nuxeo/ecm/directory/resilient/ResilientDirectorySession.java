@@ -31,6 +31,7 @@ import org.apache.commons.logging.LogFactory;
 import org.nuxeo.ecm.core.api.ClientException;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.DocumentModelList;
+import org.nuxeo.ecm.core.api.impl.DocumentModelListImpl;
 import org.nuxeo.ecm.directory.BaseSession;
 import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.Session;
@@ -522,11 +523,11 @@ public class ResilientDirectorySession extends BaseSession {
                             "Resilient directory '%s' : Unable to get list of entries on master directory '%s', fallback on slaves",
                             descriptor.name, masterSubDirectoryInfo.dirName), e);
 
-            DocumentModelList slaveResults = null;
+            DocumentModelList slaveResults = new DocumentModelListImpl();
             // Try to get the entry from slaves
             for (SubDirectoryInfo subDirectoryInfo : slaveSubDirectoryInfos) {
                 try {
-                    slaveResults = subDirectoryInfo.getSession().getEntries();
+                    slaveResults.addAll(subDirectoryInfo.getSession().getEntries());
                     break;
                 } catch (ClientException exc) {
                     log.warn(
@@ -536,7 +537,16 @@ public class ResilientDirectorySession extends BaseSession {
                                     masterSubDirectoryInfo.dirName), e);
                 }
             }
+
+            if(isReadOnly())
+            {
+                for (DocumentModel documentModel : slaveResults) {
+                    setReadOnlyEntry(documentModel);
+                }
+            }
+
             return slaveResults;
+
 
         }
 
@@ -594,38 +604,6 @@ public class ResilientDirectorySession extends BaseSession {
         } catch (ClientException e) {
             throw new DirectoryException(e);
         }
-    }
-
-    private static void updateSubDirectoryEntry(SubDirectoryInfo dirInfo,
-            Map<String, Object> fieldMap, String id, boolean canCreateIfOptional)
-            throws ClientException {
-        // DocumentModel dirEntry = dirInfo.getSession().getEntry(id);
-        // if (dirInfo.getSession().isReadOnly()
-        // || (dirEntry != null && isReadOnlyEntry(dirEntry))) {
-        // return;
-        // }
-        // if (dirEntry == null && !canCreateIfOptional) {
-        // // entry to update doesn't belong to this directory
-        // return;
-        // }
-        // Map<String, Object> map = new HashMap<String, Object>();
-        // map.put(dirInfo.idField, id);
-        // for (Entry<String, String> e : dirInfo.fromSource.entrySet()) {
-        // map.put(e.getValue(), fieldMap.get(e.getKey()));
-        // }
-        // if (map.size() > 1) {
-        // if (canCreateIfOptional && dirEntry == null) {
-        // // if entry does not exist, create it
-        // dirInfo.getSession().createEntry(map);
-        // } else {
-        // final DocumentModel entry = BaseSession.createEntryModel(null,
-        // dirInfo.dirSchemaName, id, null);
-        // // Do not set dataModel values with constructor to force fields
-        // // dirty
-        // entry.getDataModel(dirInfo.dirSchemaName).setMap(map);
-        // dirInfo.getSession().updateEntry(entry);
-        // }
-        // }
     }
 
     @Override
