@@ -493,20 +493,19 @@ public class ResilientDirectorySession extends BaseSession {
                 try {
                     slaveResults = subDirectoryInfo.getSession().getEntries();
 
-                    //Create/update entries in slave
+                    // Create/update entries in slave
                     for (DocumentModel docModel : masterResults) {
                         if (!slaveResults.contains(docModel)) {
                             updateMasterOnSlaves(docModel.getId(), true);
                         }
                     }
 
-                    //Delete old entries
+                    // Delete old entries
                     for (DocumentModel docModel : slaveResults) {
                         if (!masterResults.contains(docModel)) {
                             updateMasterOnSlaves(docModel.getId(), false);
                         }
                     }
-
 
                 } catch (ClientException exc) {
                     log.warn(
@@ -538,15 +537,13 @@ public class ResilientDirectorySession extends BaseSession {
                 }
             }
 
-            if(isReadOnly())
-            {
+            if (isReadOnly()) {
                 for (DocumentModel documentModel : slaveResults) {
                     setReadOnlyEntry(documentModel);
                 }
             }
 
             return slaveResults;
-
 
         }
 
@@ -573,6 +570,8 @@ public class ResilientDirectorySession extends BaseSession {
         // Do not set dataModel values with constructor to force fields dirty
         entry.getDataModel(schemaName).setMap(fieldMap);
 
+        // Do not fallback if create on master has failed.
+        // The master source must stay the most up-to-date source
         masterSubDirectoryInfo.getSession().createEntry(entry);
         updateMasterOnSlaves(id, true);
         return entry;
@@ -608,24 +607,17 @@ public class ResilientDirectorySession extends BaseSession {
 
     @Override
     public void updateEntry(DocumentModel docModel) throws ClientException {
-        // if (isReadOnly() || isReadOnlyEntry(docModel)) {
-        // return;
-        // }
-        // init();
-        // final String id = docModel.getId();
-        // Map<String, Object> fieldMap =
-        // docModel.getDataModel(schemaName).getMap();
-        // for (SubDirectoryInfo SubDirectoryInfo : SubDirectoryInfos) {
-        // // check if entry exists in this source, in case it can be created
-        // // in optional subdirectories
-        // boolean canCreateIfOptional = false;
-        // SubDirectoryInfo dirInfo = SubDirectoryInfo.subDirectoryInfo;
-        // if (!canCreateIfOptional) {
-        // canCreateIfOptional = dirInfo.getSession().getEntry(id) != null;
-        // }
-        // updateSubDirectoryEntry(dirInfo, fieldMap, id, false);
-        //
-        // }
+        init();
+        if (isReadOnly() || isReadOnlyEntry(docModel)) {
+            return;
+        }
+
+
+        // Do not fallback if update on master has failed.
+        // The master source must stay the most up-to-date source
+        masterSubDirectoryInfo.getSession().updateEntry(docModel);
+        updateMasterOnSlaves(docModel.getId(), true);
+
     }
 
     @Override
