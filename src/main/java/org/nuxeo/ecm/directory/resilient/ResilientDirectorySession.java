@@ -22,8 +22,6 @@ package org.nuxeo.ecm.directory.resilient;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,13 +31,10 @@ import org.apache.commons.logging.LogFactory;
 import org.nuxeo.ecm.core.api.ClientException;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.DocumentModelList;
-import org.nuxeo.ecm.core.api.impl.DocumentModelListImpl;
-import org.nuxeo.ecm.core.schema.SchemaManager;
 import org.nuxeo.ecm.directory.BaseSession;
 import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.Session;
 import org.nuxeo.ecm.directory.api.DirectoryService;
-import org.nuxeo.runtime.api.Framework;
 
 /**
  * Directory session aggregating entries from different sources.
@@ -57,8 +52,6 @@ public class ResilientDirectorySession extends BaseSession {
 
     private final DirectoryService directoryService;
 
-    private final SchemaManager schemaManager;
-
     private final ResilientDirectory directory;
 
     private final ResilientDirectoryDescriptor descriptor;
@@ -75,7 +68,6 @@ public class ResilientDirectorySession extends BaseSession {
 
     public ResilientDirectorySession(ResilientDirectory directory) {
         directoryService = ResilientDirectoryFactory.getDirectoryService();
-        schemaManager = Framework.getLocalService(SchemaManager.class);
         this.directory = directory;
         descriptor = directory.getDescriptor();
         schemaName = directory.getSchema();
@@ -272,7 +264,6 @@ public class ResilientDirectorySession extends BaseSession {
      * @throws DirectoryException
      * @throws ClientException
      *
-     * @since TODO
      */
     public boolean isReadOnly() {
         // The aim of this resilient directory is to replicate at least one
@@ -305,10 +296,10 @@ public class ResilientDirectorySession extends BaseSession {
      * @param entryId
      * @param masterHasEntry
      *
-     * @since TODO
      */
     private void updateMasterOnSlaves(String entryId, boolean masterHasEntry) {
-        // if master has entry, update entry on slave, else if it does not exist on slave create it
+        // if master has entry, update entry on slave, else if it does not exist
+        // on slave create it
         // If the master does not have this entry anymore delete it from slave
 
         if (masterHasEntry) {
@@ -325,19 +316,22 @@ public class ResilientDirectorySession extends BaseSession {
                 for (SubDirectoryInfo subDirInfo : slaveSubDirectoryInfos) {
                     try {
                         if (subDirInfo.getSession().hasEntry(entryId)) {
-                            final DocumentModel entry = BaseSession.createEntryModel(null,
-                                    schemaName, entryId, null);
-                            // Do not set dataModel values with constructor to force fields dirty
-                            entry.getDataModel(schemaName).setMap(docModel.getProperties(schemaName));
+                            final DocumentModel entry = BaseSession.createEntryModel(
+                                    null, schemaName, entryId, null);
+                            // Do not set dataModel values with constructor to
+                            // force fields dirty
+                            entry.getDataModel(schemaName).setMap(
+                                    docModel.getProperties(schemaName));
 
                             subDirInfo.getSession().updateEntry(entry);
 
-                        }else
-                        {
-                            final DocumentModel entry = BaseSession.createEntryModel(null,
-                                    schemaName, entryId, null);
-                            // Do not set dataModel values with constructor to force fields dirty
-                            entry.getDataModel(schemaName).setMap(docModel.getProperties(schemaName));
+                        } else {
+                            final DocumentModel entry = BaseSession.createEntryModel(
+                                    null, schemaName, entryId, null);
+                            // Do not set dataModel values with constructor to
+                            // force fields dirty
+                            entry.getDataModel(schemaName).setMap(
+                                    docModel.getProperties(schemaName));
 
                             subDirInfo.getSession().createEntry(entry);
                         }
@@ -372,8 +366,6 @@ public class ResilientDirectorySession extends BaseSession {
 
     }
 
-
-
     private boolean hasEntryOnSlave(String id) throws ClientException {
         init();
         for (SubDirectoryInfo dirInfo : slaveSubDirectoryInfos) {
@@ -385,7 +377,6 @@ public class ResilientDirectorySession extends BaseSession {
         return false;
     }
 
-
     private List<DocumentModel> fetchOnSlave(String query) {
         return null;
     }
@@ -394,19 +385,15 @@ public class ResilientDirectorySession extends BaseSession {
         return null;
     }
 
-
-
     @Override
     public boolean authenticate(String username, String password)
             throws ClientException {
         init();
-        // TODO : First check if the master contains the given user. If KO try
-        // on slave but don't synchronise both
 
         // First try to authenticate against the master
         try {
-            boolean authenticated = masterSubDirectoryInfo.getSession().authenticate(username,
-                    password);
+            boolean authenticated = masterSubDirectoryInfo.getSession().authenticate(
+                    username, password);
             updateMasterOnSlaves(username, authenticated);
         } catch (DirectoryException e) {
             log.warn(
@@ -415,7 +402,7 @@ public class ResilientDirectorySession extends BaseSession {
                             username, masterSubDirectoryInfo.dirName), e);
         }
 
-        // If the master is KO, try to authenticate on slaves
+        // If the master is KO, fallback on slave and try to authenticate
         for (SubDirectoryInfo dirInfo : slaveSubDirectoryInfos) {
             if (dirInfo.getSession().authenticate(username, password)) {
                 return true;
@@ -439,7 +426,6 @@ public class ResilientDirectorySession extends BaseSession {
      * @return
      * @throws DirectoryException
      *
-     * @since TODO
      */
     public DocumentModel getEntry(String id, boolean fetchReferences)
             throws DirectoryException {
@@ -491,70 +477,69 @@ public class ResilientDirectorySession extends BaseSession {
     public DocumentModelList getEntries() throws ClientException {
         init();
 
-        // list of entries
-        final DocumentModelList results = new DocumentModelListImpl();
-        // entry ids already seen (mapped to the source name)
-        final Map<String, String> seen = new HashMap<String, String>();
-        Set<String> readOnlyEntries = new HashSet<String>();
-        //
-        // for (SubDirectoryInfo SubDirectoryInfo : SubDirectoryInfos) {
-        // // accumulated map for each entry
-        // final Map<String, Map<String, Object>> maps = new HashMap<String,
-        // Map<String, Object>>();
-        // // number of dirs seen for each entry
-        // final Map<String, Integer> counts = new HashMap<String, Integer>();
-        // SubDirectoryInfo dirInfo = SubDirectoryInfo.subDirectoryInfo;
-        // final DocumentModelList entries = dirInfo.getSession().getEntries();
-        // for (DocumentModel entry : entries) {
-        // final String id = entry.getId();
-        // // find or create map for this entry
-        // Map<String, Object> map = maps.get(id);
-        // if (map == null) {
-        // map = new HashMap<String, Object>();
-        // maps.put(id, map);
-        // counts.put(id, 1);
-        // } else {
-        // counts.put(id, counts.get(id) + 1);
-        // }
-        // // put entry data in map
-        // for (Entry<String, String> e : dirInfo.toSource.entrySet()) {
-        // map.put(e.getValue(),
-        // entry.getProperty(dirInfo.dirSchemaName, e.getKey()));
-        // }
-        // if (BaseSession.isReadOnlyEntry(entry)) {
-        // readOnlyEntries.add(id);
-        // }
-        // }
-        //
-        // // TODO : deal with the code below...
-        // // now create entries for all full maps
-        // int numdirs = 1;
-        // ((ArrayList<?>) results).ensureCapacity(results.size()
-        // + maps.size());
-        // for (Entry<String, Map<String, Object>> e : maps.entrySet()) {
-        // final String id = e.getKey();
-        // if (seen.containsKey(id)) {
-        // log.warn(String.format(
-        // "Entry '%s' is present in source '%s' but also in source '%s'. "
-        // + "The second one will be ignored.", id,
-        // seen.get(id), SubDirectoryInfo.source.name));
-        // continue;
-        // }
-        // final Map<String, Object> map = e.getValue();
-        // if (counts.get(id) != numdirs) {
-        // log.warn(String.format(
-        // "Entry '%s' for source '%s' is not present in all directories. "
-        // + "It will be skipped.", id,
-        // SubDirectoryInfo.source.name));
-        // continue;
-        // }
-        // seen.put(id, SubDirectoryInfo.source.name);
-        // final DocumentModel entry = BaseSession.createEntryModel(null,
-        // schemaName, id, map, readOnlyEntries.contains(id));
-        // results.add(entry);
-        // }
-        // }
-        return results;
+        try {
+            // XXX : Should we update all entries on slave : performance issue
+            // ???
+            // => or just warn that list entries are coming from slaves
+            // =>Maybe we should perform a cron job for synchronize the entire
+            // directory
+
+            // list of master entries
+            final DocumentModelList masterResults = masterSubDirectoryInfo.getSession().getEntries();
+            DocumentModelList slaveResults = null;
+
+            for (SubDirectoryInfo subDirectoryInfo : slaveSubDirectoryInfos) {
+                try {
+                    slaveResults = subDirectoryInfo.getSession().getEntries();
+
+                    //Create/update entries in slave
+                    for (DocumentModel docModel : masterResults) {
+                        if (!slaveResults.contains(docModel)) {
+                            updateMasterOnSlaves(docModel.getId(), true);
+                        }
+                    }
+
+                    //Delete old entries
+                    for (DocumentModel docModel : slaveResults) {
+                        if (!masterResults.contains(docModel)) {
+                            updateMasterOnSlaves(docModel.getId(), false);
+                        }
+                    }
+
+
+                } catch (ClientException exc) {
+                    log.warn(
+                            String.format(
+                                    "Resilient directory '%s' : Unable to get list of entries on slave directory '%s'for synchronization",
+                                    descriptor.name,
+                                    masterSubDirectoryInfo.dirName), exc);
+                }
+            }
+            return masterResults;
+        } catch (ClientException e) {
+            log.warn(
+                    String.format(
+                            "Resilient directory '%s' : Unable to get list of entries on master directory '%s', fallback on slaves",
+                            descriptor.name, masterSubDirectoryInfo.dirName), e);
+
+            DocumentModelList slaveResults = null;
+            // Try to get the entry from slaves
+            for (SubDirectoryInfo subDirectoryInfo : slaveSubDirectoryInfos) {
+                try {
+                    slaveResults = subDirectoryInfo.getSession().getEntries();
+                    break;
+                } catch (ClientException exc) {
+                    log.warn(
+                            String.format(
+                                    "Resilient directory '%s' : Unable to get list of entries on slave directory '%s', fallback on another slave if it exists",
+                                    descriptor.name,
+                                    masterSubDirectoryInfo.dirName), e);
+                }
+            }
+            return slaveResults;
+
+        }
+
     }
 
     @Override
@@ -573,12 +558,10 @@ public class ResilientDirectorySession extends BaseSession {
         }
         final String id = String.valueOf(rawid); // XXX allow longs too
 
-
         final DocumentModel entry = BaseSession.createEntryModel(null,
                 schemaName, id, null);
         // Do not set dataModel values with constructor to force fields dirty
         entry.getDataModel(schemaName).setMap(fieldMap);
-
 
         masterSubDirectoryInfo.getSession().createEntry(entry);
         updateMasterOnSlaves(id, true);

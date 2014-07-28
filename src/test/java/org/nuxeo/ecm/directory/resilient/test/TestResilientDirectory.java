@@ -21,8 +21,10 @@ package org.nuxeo.ecm.directory.resilient.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,6 +35,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.nuxeo.ecm.core.api.DocumentModel;
+import org.nuxeo.ecm.core.api.DocumentModelList;
 import org.nuxeo.ecm.directory.Session;
 import org.nuxeo.ecm.directory.api.DirectoryService;
 import org.nuxeo.ecm.directory.memory.MemoryDirectory;
@@ -206,18 +209,22 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
 
     @Test
     public void testGetEntries() throws Exception {
-//        DocumentModelList l;
-//        l = dir.getEntries();
-//        assertEquals(3, l.size());
-//        DocumentModel entry = null;
-//        for (DocumentModel e : l) {
-//            if (e.getId().equals("1")) {
-//                entry = e;
-//                break;
-//            }
-//        }
-//        assertNotNull(entry);
-//        assertEquals("foo1", entry.getProperty("schema1", "foo"));
+        DocumentModelList l;
+        l = dir.getEntries();
+        assertEquals(1, l.size());
+        DocumentModel entry = null;
+        for (DocumentModel e : l) {
+            if (e.getId().equals("1")) {
+                entry = e;
+                break;
+            }
+        }
+        assertNotNull(entry);
+        assertEquals("foo1", entry.getProperty("schema1", "foo"));
+
+        Session dir2 = memdir2.getSession();
+        entry = dir2.getEntry("2") ;
+        assertTrue(entry == null);
     }
 
 
