@@ -378,14 +378,6 @@ public class ResilientDirectorySession extends BaseSession {
         return false;
     }
 
-    private List<DocumentModel> fetchOnSlave(String query) {
-        return null;
-    }
-
-    private List<DocumentModel> fetchOnMaster(String query) {
-        return null;
-    }
-
     @Override
     public boolean authenticate(String username, String password)
             throws ClientException {
@@ -473,6 +465,33 @@ public class ResilientDirectorySession extends BaseSession {
 
     }
 
+    /**
+     * Method used for quer and getEntries method This method may raise
+     * performance issue Find a smarter way of update Use a cron job that deal
+     * with asynchronous update
+     *
+     * @param masterResults The up-to-date list of results from master
+     *
+     */
+    private void bulkUpdateMasterOnSlave(DocumentModelList masterResults,
+            DocumentModelList slaveResults) {
+
+        // Create/update entries in slave
+        for (DocumentModel docModel : masterResults) {
+            if (!slaveResults.contains(docModel)) {
+                updateMasterOnSlaves(docModel.getId(), true);
+            }
+        }
+
+        // Delete old entries
+        for (DocumentModel docModel : slaveResults) {
+            if (!masterResults.contains(docModel)) {
+                updateMasterOnSlaves(docModel.getId(), false);
+            }
+        }
+
+    }
+
     @Override
     @SuppressWarnings("boxing")
     public DocumentModelList getEntries() throws ClientException {
@@ -493,19 +512,7 @@ public class ResilientDirectorySession extends BaseSession {
                 try {
                     slaveResults = subDirectoryInfo.getSession().getEntries();
 
-                    // Create/update entries in slave
-                    for (DocumentModel docModel : masterResults) {
-                        if (!slaveResults.contains(docModel)) {
-                            updateMasterOnSlaves(docModel.getId(), true);
-                        }
-                    }
-
-                    // Delete old entries
-                    for (DocumentModel docModel : slaveResults) {
-                        if (!masterResults.contains(docModel)) {
-                            updateMasterOnSlaves(docModel.getId(), false);
-                        }
-                    }
+                    bulkUpdateMasterOnSlave(masterResults, slaveResults);
 
                 } catch (ClientException exc) {
                     log.warn(
@@ -612,7 +619,6 @@ public class ResilientDirectorySession extends BaseSession {
             return;
         }
 
-
         // Do not fallback if update on master has failed.
         // The master source must stay the most up-to-date source
         masterSubDirectoryInfo.getSession().updateEntry(docModel);
@@ -641,145 +647,67 @@ public class ResilientDirectorySession extends BaseSession {
     }
 
     @Override
-    @SuppressWarnings("boxing")
     public DocumentModelList query(Map<String, Serializable> filter,
             Set<String> fulltext, Map<String, String> orderBy,
             boolean fetchReferences) throws ClientException {
-        // init();
-        // // list of entries
-        // final DocumentModelList results = new DocumentModelListImpl();
-        // // entry ids already seen (mapped to the source name)
-        // final Map<String, String> seen = new HashMap<String, String>();
-        // if (fulltext == null) {
-        // fulltext = Collections.emptySet();
-        // }
-        // Set<String> readOnlyEntries = new HashSet<String>();
-        //
-        // for (SubDirectoryInfo SubDirectoryInfo : SubDirectoryInfos) {
-        // // accumulated map for each entry
-        // final Map<String, Map<String, Object>> maps = new HashMap<String,
-        // Map<String, Object>>();
-        // // number of dirs seen for each entry
-        // final Map<String, Integer> counts = new HashMap<String, Integer>();
-        //
-        // // list of optional dirs where filter matches default values
-        // List<SubDirectoryInfo> optionalDirsMatching = new
-        // ArrayList<SubDirectoryInfo>();
-        // for (SubDirectoryInfo dirInfo : SubDirectoryInfo.subDirectoryInfos) {
-        // // compute filter
-        // final Map<String, Serializable> dirFilter = new HashMap<String,
-        // Serializable>();
-        // for (Entry<String, Serializable> e : filter.entrySet()) {
-        // final String fieldName = dirInfo.fromSource.get(e.getKey());
-        // if (fieldName == null) {
-        // continue;
-        // }
-        // dirFilter.put(fieldName, e.getValue());
-        // }
-        // if (dirInfo.isOptional) {
-        // // check if filter matches directory default values
-        // boolean matches = true;
-        // for (Map.Entry<String, Serializable> dirFilterEntry :
-        // dirFilter.entrySet()) {
-        // Object defaultValue =
-        // dirInfo.defaultEntry.get(dirFilterEntry.getKey());
-        // Object filterValue = dirFilterEntry.getValue();
-        // if (defaultValue == null && filterValue != null) {
-        // matches = false;
-        // } else if (defaultValue != null
-        // && !defaultValue.equals(filterValue)) {
-        // matches = false;
-        // }
-        // }
-        // if (matches) {
-        // optionalDirsMatching.add(dirInfo);
-        // }
-        // }
-        // // compute fulltext
-        // Set<String> dirFulltext = new HashSet<String>();
-        // for (String sourceFieldName : fulltext) {
-        // final String fieldName = dirInfo.fromSource.get(sourceFieldName);
-        // if (fieldName != null) {
-        // dirFulltext.add(fieldName);
-        // }
-        // }
-        // // make query to subdirectory
-        // DocumentModelList l = dirInfo.getSession().query(dirFilter,
-        // dirFulltext, null, fetchReferences);
-        // for (DocumentModel entry : l) {
-        // final String id = entry.getId();
-        // Map<String, Object> map = maps.get(id);
-        // if (map == null) {
-        // map = new HashMap<String, Object>();
-        // maps.put(id, map);
-        // counts.put(id, 1);
-        // } else {
-        // counts.put(id, counts.get(id) + 1);
-        // }
-        // for (Entry<String, String> e : dirInfo.toSource.entrySet()) {
-        // map.put(e.getValue(),
-        // entry.getProperty(dirInfo.dirSchemaName,
-        // e.getKey()));
-        // }
-        // if (BaseSession.isReadOnlyEntry(entry)) {
-        // readOnlyEntries.add(id);
-        // }
-        // }
-        // }
-        // // add default entry values for optional dirs
-        // for (SubDirectoryInfo dirInfo : optionalDirsMatching) {
-        // // add entry for every data found in other dirs
-        // Set<String> existingIds = new HashSet<String>(
-        // dirInfo.getSession().getProjection(
-        // Collections.<String, Serializable> emptyMap(),
-        // dirInfo.idField));
-        // for (Entry<String, Map<String, Object>> result : maps.entrySet()) {
-        // final String id = result.getKey();
-        // if (!existingIds.contains(id)) {
-        // counts.put(id, counts.get(id) + 1);
-        // final Map<String, Object> map = result.getValue();
-        // for (Entry<String, String> e : dirInfo.toSource.entrySet()) {
-        // String value = e.getValue();
-        // if (!map.containsKey(value)) {
-        // map.put(value,
-        // dirInfo.defaultEntry.get(e.getKey()));
-        // }
-        // }
-        // }
-        // }
-        // }
-        // // intersection, ignore entries not in all subdirectories
-        // final int numdirs = SubDirectoryInfo.subDirectoryInfos.size();
-        // for (Iterator<String> it = maps.keySet().iterator(); it.hasNext();) {
-        // final String id = it.next();
-        // if (counts.get(id) != numdirs) {
-        // it.remove();
-        // }
-        // }
-        // // now create entries
-        // ((ArrayList<?>) results).ensureCapacity(results.size()
-        // + maps.size());
-        // for (Entry<String, Map<String, Object>> e : maps.entrySet()) {
-        // final String id = e.getKey();
-        // if (seen.containsKey(id)) {
-        // log.warn(String.format(
-        // "Entry '%s' is present in source '%s' but also in source '%s'. "
-        // + "The second one will be ignored.", id,
-        // seen.get(id), SubDirectoryInfo.source.name));
-        // continue;
-        // }
-        // final Map<String, Object> map = e.getValue();
-        // seen.put(id, SubDirectoryInfo.source.name);
-        // final DocumentModel entry = BaseSession.createEntryModel(null,
-        // schemaName, id, map, readOnlyEntries.contains(id));
-        // results.add(entry);
-        // }
-        // }
-        // if (orderBy != null && !orderBy.isEmpty()) {
-        // directory.orderEntries(results, orderBy);
-        // }
-        // return results;
-        return null;
+        init();
+
+        // list of entries
+        final DocumentModelList results = new DocumentModelListImpl();
+        try {
+            results.addAll(masterSubDirectoryInfo.getSession().query(filter,
+                    fulltext, orderBy, fetchReferences));
+            DocumentModelList slaveResults = null;
+
+            for (SubDirectoryInfo subDirectoryInfo : slaveSubDirectoryInfos) {
+                try {
+                    slaveResults = subDirectoryInfo.getSession().query(filter,
+                            fulltext, orderBy, fetchReferences);
+
+                    // XXX : Should we update all entries on all directories ??
+                    // Performance issue ...
+                    // =>Cron job ? see getEntries for a common solution ?
+                    bulkUpdateMasterOnSlave(results, slaveResults);
+
+                } catch (ClientException exc) {
+                    log.warn(
+                            String.format(
+                                    "Resilient directory '%s' : Unable to query entries on slave directory '%s'for synchronization",
+                                    descriptor.name,
+                                    masterSubDirectoryInfo.dirName), exc);
+                }
+            }
+        } catch (ClientException e) {
+            log.warn(
+                    String.format(
+                            "Resilient directory '%s' : Unable to query entries on master directory '%s', fallback on slaves",
+                            descriptor.name, masterSubDirectoryInfo.dirName), e);
+
+            // Try to get the entry from slaves
+            for (SubDirectoryInfo subDirectoryInfo : slaveSubDirectoryInfos) {
+                try {
+                    results.addAll(subDirectoryInfo.getSession().query(filter,
+                            fulltext, orderBy, fetchReferences));
+                    break;
+                } catch (ClientException exc) {
+                    log.warn(
+                            String.format(
+                                    "Resilient directory '%s' : Unable to query entries on slave directory '%s', fallback on another slave if it exists",
+                                    descriptor.name,
+                                    masterSubDirectoryInfo.dirName), e);
+                }
+            }
+
+        }
+
+        for (DocumentModel documentModel : results) {
+            if (isReadOnly()) {
+                setReadOnlyEntry(documentModel);
+            }
+
+        }
+        return results;
+
     }
 
     @Override
