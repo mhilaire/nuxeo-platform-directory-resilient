@@ -25,6 +25,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -84,9 +85,11 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         // create and register mem directories
         Map<String, Object> e;
 
-        // dir 1
+        //Define the schema used for queries
         Set<String> schema1Set = new HashSet<String>(
-                Arrays.asList("uid", "foo"));
+                Arrays.asList("uid", "foo", "bar"));
+
+        // dir 1
         // Define here the in-memory directory as :
         //
         // <directory name="dir1">
@@ -104,6 +107,12 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         e.put("uid", "1");
         e.put("foo", "foo1");
         e.put("bar", "bar1");
+        dir1.createEntry(e);
+
+        e = new HashMap<String, Object>();
+        e.put("uid", "4");
+        e.put("foo", "foo4");
+        e.put("bar", "bar4");
         dir1.createEntry(e);
 
         // dir 2
@@ -231,7 +240,7 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
     public void testGetEntries() throws Exception {
         DocumentModelList l;
         l = dir.getEntries();
-        assertEquals(1, l.size());
+        assertEquals(2, l.size());
         DocumentModel entry = null;
         for (DocumentModel e : l) {
             if (e.getId().equals("1")) {
@@ -276,5 +285,78 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         assertTrue(dir.hasEntry("1"));
         assertFalse(dir.hasEntry("foo"));
     }
+
+    @Test
+    public void testQuery() throws Exception {
+        Session dir2 = memdir2.getSession();
+
+        Map<String, Serializable> filter = new HashMap<String, Serializable>();
+        DocumentModelList entries;
+        DocumentModel e;
+
+        // empty filter means everything (like getEntries)
+        entries = dir.query(filter);
+        assertNotNull(entries);
+        assertEquals(2, entries.size());
+
+        // no result
+        filter.put("foo", "f");
+        entries = dir.query(filter);
+        assertEquals(0, entries.size());
+
+        // query to test :
+        // the result is in the master and should be replicated in slave
+        filter.put("foo", "foo1");
+        entries = dir.query(filter);
+        assertEquals(1, entries.size());
+        e = entries.get(0);
+        assertEquals("1", e.getId());
+        assertEquals("bar1", e.getProperty("schema1", "bar"));
+        assertEquals(dir2.getEntry("1"), e);
+        filter.clear();
+
+        // query to test :
+        // the result is only in the slave and should be removed
+        filter.put("foo", "foo2");
+        entries = dir.query(filter);
+        assertEquals(0, entries.size());
+        assertNull(dir2.getEntry("2"));
+        filter.clear();
+    }
+
+    @Test
+    public void testQueryFulltext() throws Exception {
+        Session dir1 = memdir1.getSession();
+
+        //Update the uid 1 on dir1 only
+        HashMap<String, Object> e = new HashMap<String, Object>();
+        e.put("uid", "1");
+        e.put("foo", "foo3");
+        e.put("bar", "bar3");
+        DocumentModel docModel = dir1.getEntry("1");
+        docModel.setProperties("schema1", e);
+        dir1.updateEntry(docModel);
+
+        Map<String, Serializable> filter = new HashMap<String, Serializable>();
+        Set<String> fulltext = new HashSet<String>();
+        DocumentModelList entries;
+        entries = dir.query(filter, fulltext);
+        assertEquals(2, entries.size());
+        // null fulltext set should be equivalent to empty one
+        entries = dir.query(filter, null);
+        assertEquals(2, entries.size());
+
+        Session dir2 = memdir2.getSession();
+        //uid2 should have been removed from slave
+        DocumentModel entry = dir2.getEntry("2");
+        assertNull(entry);
+        //uid1 should have been copied to slave
+        //And should have been updated
+        assertNotNull(dir2.getEntry("1"));
+        assertEquals("bar3", dir2.getEntry("1").getProperty("schema1", "bar"));
+        //uid4 should have been copied to slave
+        assertNotNull(dir2.getEntry("4"));
+    }
+
 
 }
