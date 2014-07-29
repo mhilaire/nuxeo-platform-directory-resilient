@@ -27,8 +27,10 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -357,6 +359,41 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         //uid4 should have been copied to slave
         assertNotNull(dir2.getEntry("4"));
     }
+
+    @Test
+    public void testGetProjection() throws Exception {
+        Map<String, Serializable> filter = new HashMap<String, Serializable>();
+        List<String> list;
+
+        // empty filter means everything (like getEntries)
+        list = dir.getProjection(filter, "uid");
+        Collections.sort(list);
+        assertEquals(Arrays.asList("1", "4"), list);
+        list = dir.getProjection(filter, "foo");
+        Collections.sort(list);
+        assertEquals(Arrays.asList("foo1", "foo4"), list);
+        list = dir.getProjection(filter, "bar");
+        Collections.sort(list);
+        assertEquals(Arrays.asList("bar1", "bar4"), list);
+
+        // XXX test projection on unknown column
+        // Is it normal that all results are returned
+        filter.put("thefoobar", "foo");
+        list = dir.getProjection(filter, "uid");
+        assertEquals(2, list.size());
+
+        // no result
+        filter.put("foo", "f");
+        list = dir.getProjection(filter, "uid");
+        assertEquals(0, list.size());
+        list = dir.getProjection(filter, "foo");
+        assertEquals(0, list.size());
+        list = dir.getProjection(filter, "bar");
+        assertEquals(0, list.size());
+
+
+    }
+
 
 
 }

@@ -721,11 +721,6 @@ public class ResilientDirectorySession extends BaseSession {
     public List<String> getProjection(Map<String, Serializable> filter,
             Set<String> fulltext, String columnName) throws ClientException {
 
-        // There's no way to do an efficient getProjection to a source with
-        // multiple subdirectories given the current API (we'd need an API that
-        // passes several columns).
-        // So just do a non-optimal implementation for now.
-
         final DocumentModelList entries = query(filter, fulltext);
         final List<String> results = new ArrayList<String>(entries.size());
         for (DocumentModel entry : entries) {
