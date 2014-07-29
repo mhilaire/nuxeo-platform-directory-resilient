@@ -13,7 +13,7 @@
 	<artifactId>nuxeo-platform-directory-resilient</artifactId>
 	<name>Nuxeo Platform Directory Resilient</name>
 	<description>
-    	The aim of this project is to provide an LDAP Directory that is more resilient to bad network and bad LDAP
+    	The aim of this project is to provide a directory that is more resilient to bad network and bad LDAP
   	</description>
 
 	<dependencies>
@@ -28,6 +28,14 @@
 		<dependency>
 			<groupId>org.nuxeo.ecm.platform</groupId>
 			<artifactId>nuxeo-platform-directory-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.nuxeo.ecm.platform</groupId>
+			<artifactId>nuxeo-platform-directory-ldap</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.nuxeo.ecm.platform</groupId>
+			<artifactId>nuxeo-platform-directory-sql</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.nuxeo.ecm.platform</groupId>
@@ -88,4 +96,18 @@
 
 	</repositories>
 
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestFile>src/main/resources/META-INF/MANIFEST.MF</manifestFile>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+  
 </project>

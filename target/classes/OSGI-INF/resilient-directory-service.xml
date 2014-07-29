@@ -41,7 +41,8 @@
 	- At least one slave in write mode
 	- The slave's schema must be the same than the master
 	- The slave must used the same idField/passworField than the master
-
+	- If the master is a LDAP, must have a passwordField (to enable authentication)
+	- All SQL sub directory must not use auto-increment id
 	All master definitions (schema,mode,fields) will be used as the resilient definitions.
 	No need to duplicate definition in the resilient   
       
