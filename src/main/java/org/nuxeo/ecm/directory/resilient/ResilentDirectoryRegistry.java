@@ -13,6 +13,7 @@
  *
  * Contributors:
  *     Anahide Tchertchian
+ *     Maxime Hilaire
  */
 package org.nuxeo.ecm.directory.resilient;
 
@@ -96,14 +97,12 @@ public class ResilentDirectoryRegistry extends
         boolean remove = src.remove;
         // keep old remove info: if old contribution was removed, new one
         // should replace the old one completely
-        boolean wasRemoved = dst.remove;
         if (remove) {
             dst.remove = remove;
             // don't bother merging
             return;
         }
 
-        dst.merge(src, wasRemoved);
     }
 
     // API
