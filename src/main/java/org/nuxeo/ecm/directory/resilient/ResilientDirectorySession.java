@@ -274,6 +274,7 @@ public class ResilientDirectorySession extends BaseSession {
         // So return the value of the master directory, to warn the caller if
         // new entry will be created on master or not
         try {
+            init();
             return masterSubDirectoryInfo.getSession().isReadOnly();
         } catch (ClientException e) {
             log.warn(

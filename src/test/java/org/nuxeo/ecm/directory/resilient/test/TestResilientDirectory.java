@@ -24,6 +24,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -38,7 +39,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.nuxeo.ecm.core.api.DocumentModel;
+import org.nuxeo.ecm.core.api.DocumentModelComparator;
 import org.nuxeo.ecm.core.api.DocumentModelList;
+import org.nuxeo.ecm.directory.BaseSession;
+import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.Session;
 import org.nuxeo.ecm.directory.api.DirectoryService;
 import org.nuxeo.ecm.directory.memory.MemoryDirectory;
@@ -65,7 +69,7 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
 
     MemoryDirectory memdir2;
 
-    ResilientDirectory multiDir;
+    ResilientDirectory resilientDir;
 
     ResilientDirectorySession dir;
 
@@ -87,9 +91,9 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         // create and register mem directories
         Map<String, Object> e;
 
-        //Define the schema used for queries
-        Set<String> schema1Set = new HashSet<String>(
-                Arrays.asList("uid", "foo", "bar"));
+        // Define the schema used for queries
+        Set<String> schema1Set = new HashSet<String>(Arrays.asList("uid",
+                "foo", "bar"));
 
         // dir 1
         // Define here the in-memory directory as :
@@ -135,11 +139,42 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         // Config for the tested bundle
         deployContrib(TEST_BUNDLE, "directories-config.xml");
 
-        // the multi directory
-        multiDir = (ResilientDirectory) directoryService.getDirectory("resilient");
-        dir = (ResilientDirectorySession) multiDir.getSession();
+        // the resilient directory
+        resilientDir = (ResilientDirectory) directoryService.getDirectory("resilient");
+        dir = (ResilientDirectorySession) resilientDir.getSession();
 
     }
+
+    @Test
+    public void testConfigSlaveReadOnly() {
+        Set<String> schema1Set = new HashSet<String>(Arrays.asList("uid",
+                "foo", "bar"));
+
+        MemoryDirectory memdir3 = new MemoryDirectory("dir3", "schema1", schema1Set, "uid",
+                "foo");
+        memoryDirectoryFactory.registerDirectory(memdir3);
+
+        MemoryDirectory memdir4 = new MemoryDirectory("dir4", "schema1", schema1Set, "uid",
+                "foo");
+        memdir4.setReadOnly(true);
+        memoryDirectoryFactory.registerDirectory(memdir4);
+
+        try {
+
+            // Config for the tested bundle
+            deployContrib(TEST_BUNDLE, "read-only-directories-config.xml");
+
+            ResilientDirectory resilientDir = (ResilientDirectory) directoryService.getDirectory("readOnlyResilient");
+            ResilientDirectorySession dir = (ResilientDirectorySession) resilientDir.getSession();
+            fail("Should raise read-only exception on slave");
+        } catch (Exception ex) {
+        }
+
+        memoryDirectoryFactory.unregisterDirectory(memdir3);
+        memoryDirectoryFactory.unregisterDirectory(memdir4);
+    }
+
+
 
     @Override
     @After
@@ -264,6 +299,8 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         Session dir1 = memdir1.getSession();
         Session dir2 = memdir2.getSession();
         assertTrue(dir.authenticate("1", "foo1"));
+
+        assertTrue(dir2.authenticate("1", "foo1"));
         assertFalse(dir.authenticate("1", "haha"));
         assertFalse(dir.authenticate("2", "foo2"));
 
@@ -330,7 +367,7 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
     public void testQueryFulltext() throws Exception {
         Session dir1 = memdir1.getSession();
 
-        //Update the uid 1 on dir1 only
+        // Update the uid 1 on dir1 only
         HashMap<String, Object> e = new HashMap<String, Object>();
         e.put("uid", "1");
         e.put("foo", "foo3");
@@ -349,14 +386,14 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         assertEquals(2, entries.size());
 
         Session dir2 = memdir2.getSession();
-        //uid2 should have been removed from slave
+        // uid2 should have been removed from slave
         DocumentModel entry = dir2.getEntry("2");
         assertNull(entry);
-        //uid1 should have been copied to slave
-        //And should have been updated
+        // uid1 should have been copied to slave
+        // And should have been updated
         assertNotNull(dir2.getEntry("1"));
         assertEquals("bar3", dir2.getEntry("1").getProperty("schema1", "bar"));
-        //uid4 should have been copied to slave
+        // uid4 should have been copied to slave
         assertNotNull(dir2.getEntry("4"));
     }
 
@@ -391,9 +428,99 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         list = dir.getProjection(filter, "bar");
         assertEquals(0, list.size());
 
+    }
+
+    @Test
+    public void testCreateFromModel() throws Exception {
+        String schema = "schema1";
+        DocumentModel entry = BaseSession.createEntryModel(null, schema, null,
+                null);
+        entry.setProperty("schema1", "uid", "yo");
+
+        assertNull(dir.getEntry("yo"));
+        dir.createEntry(entry);
+        assertNotNull(dir.getEntry("yo"));
+
+        // create one with existing same id, must fail
+        entry.setProperty("schema1", "uid", "1");
+        try {
+            entry = dir.createEntry(entry);
+            fail("Should raise an error, entry already exists");
+        } catch (DirectoryException e) {
+        }
+    }
+
+    @Test
+    public void testReadOnlyOnGetEntry() throws Exception {
+        Session dir1 = memdir1.getSession();
+        Session dir2 = memdir2.getSession();
+        // by default no backing dir is readonly
+        assertFalse(BaseSession.isReadOnlyEntry(dir1.getEntry("1")));
+        assertFalse(BaseSession.isReadOnlyEntry(dir1.getEntry("4")));
+
+        // Set the master memory directory to read-only
+        memdir1.setReadOnly(true);
+
+        // The resilient dir should be read-only now
+        assertTrue(dir.isReadOnly());
+
+        // all should be readonly
+        assertTrue(BaseSession.isReadOnlyEntry(dir.getEntry("1")));
+
+        assertFalse(BaseSession.isReadOnlyEntry(dir2.getEntry("1")));
+
+        memdir2.setReadOnly(true);
+        dir2 = memdir2.getSession();
+        assertTrue(BaseSession.isReadOnlyEntry(dir2.getEntry("2")));
+
+        assertTrue(BaseSession.isReadOnlyEntry(dir.getEntry("4")));
+
+        // TODO : Check memoryDirectory behavior : Why is it allowed to create
+        // even if the mode is read-only ?
+        // assertNull(dir2.getEntry("4"));
+        assertTrue(BaseSession.isReadOnlyEntry(dir2.getEntry("4")));
+    }
+
+    @Test
+    public void testReadOnlyEntryInQueryResults() throws Exception {
+        Map<String, String> orderBy = new HashMap<String, String>();
+        orderBy.put("schema1:uid", "asc");
+        DocumentModelComparator comp  = new DocumentModelComparator(orderBy);
+
+        Map<String, Serializable> filter = new HashMap<String, Serializable>();
+        DocumentModelList results = dir.query(filter);
+        Collections.sort(results, comp);
+
+        // by default no backing dir is readonly
+        assertFalse(BaseSession.isReadOnlyEntry(results.get(0)));
+        assertFalse(BaseSession.isReadOnlyEntry(results.get(1)));
+
+        memdir1.setReadOnly(true);
+        results = dir.query(filter);
+        Collections.sort(results, comp);
+        assertTrue(BaseSession.isReadOnlyEntry(results.get(0)));
+        assertTrue(BaseSession.isReadOnlyEntry(results.get(1)));
 
     }
 
+    @Test
+    public void testReadOnlyEntryInGetEntriesResults() throws Exception {
+        Map<String, String> orderBy = new HashMap<String, String>();
+        orderBy.put("schema1:uid", "asc");
+        DocumentModelComparator comp  = new DocumentModelComparator(orderBy);
 
+        DocumentModelList results = dir.getEntries();
+        Collections.sort(results, comp);
+
+        // by default no backing dir is readonly
+        assertFalse(BaseSession.isReadOnlyEntry(results.get(0)));
+        assertFalse(BaseSession.isReadOnlyEntry(results.get(1)));
+
+        memdir1.setReadOnly(true);
+        results = dir.getEntries();
+        Collections.sort(results, comp);
+        assertTrue(BaseSession.isReadOnlyEntry(results.get(0)));
+        assertTrue(BaseSession.isReadOnlyEntry(results.get(1)));
+    }
 
 }
