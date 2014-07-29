@@ -4,7 +4,7 @@ Bundle-ClassPath: .
 Manifest-Version: 1.0
 Bundle-Name: Nuxeo ECM Resilient Directory
 Created-By: 1.6.0_20 (Sun Microsystems Inc.)
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-Vendor: Nuxeo
 Bundle-Version: 0.0.0.SNAPSHOT
 Bundle-ManifestVersion: 2
