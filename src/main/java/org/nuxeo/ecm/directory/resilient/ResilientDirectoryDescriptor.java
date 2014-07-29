@@ -25,6 +25,7 @@ import org.nuxeo.common.xmap.annotation.XObject;
 
 /**
  * @author Florent Guillaume
+ * @author Maxime Hilaire
  */
 @XObject(value = "directory")
 public class ResilientDirectoryDescriptor implements Cloneable {
@@ -32,37 +33,11 @@ public class ResilientDirectoryDescriptor implements Cloneable {
     @XNode("@name")
     public String name;
 
-    @XNode("querySizeLimit")
-    public Integer querySizeLimit;
-
     @XNode("@remove")
     public boolean remove = false;
 
     @XNodeList(value = "subDirectory", type = SubDirectoryDescriptor[].class, componentType = SubDirectoryDescriptor.class)
     protected SubDirectoryDescriptor[] subDirectories;
-
-    public void merge(ResilientDirectoryDescriptor other) {
-        merge(other, false);
-    }
-
-    public void merge(ResilientDirectoryDescriptor other, boolean overwrite) {
-
-        if (other.querySizeLimit != null || overwrite) {
-            querySizeLimit = other.querySizeLimit;
-        }
-        if (other.subDirectories != null || overwrite) {
-            if (subDirectories == null) {
-                subDirectories = other.subDirectories;
-            } else {
-                SubDirectoryDescriptor[] s = new SubDirectoryDescriptor[subDirectories.length
-                        + other.subDirectories.length];
-                System.arraycopy(subDirectories, 0, s, 0, subDirectories.length);
-                System.arraycopy(other.subDirectories, 0, s, subDirectories.length,
-                        other.subDirectories.length);
-                subDirectories = s;
-            }
-        }
-    }
 
     /**
      * @since 5.6
@@ -71,7 +46,6 @@ public class ResilientDirectoryDescriptor implements Cloneable {
     public ResilientDirectoryDescriptor clone() {
         ResilientDirectoryDescriptor clone = new ResilientDirectoryDescriptor();
         clone.name = name;
-        clone.querySizeLimit = querySizeLimit;
         clone.remove = remove;
         if (subDirectories != null) {
             clone.subDirectories = new SubDirectoryDescriptor[subDirectories.length];
