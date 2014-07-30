@@ -136,6 +136,13 @@ public class ResilientDirectory extends AbstractDirectory {
         for (SubDirectoryDescriptor sub : descriptor.subDirectories) {
             Directory subDir = ResilientDirectoryFactory.getDirectoryService().getDirectory(
                     sub.name);
+            if(subDir == null)
+            {
+                throw new DirectoryException(
+                        String.format(
+                                "ResilientDirectory '%s' reference an unknown sub directory '%s'! Make sure the sub directory has been previously declared and deployed.",
+                                descriptor.name, sub.name));
+            }
             if (!sub.isMaster()) {
 
                 // Check each schema's slaves that match the master schema

@@ -22,8 +22,10 @@ package org.nuxeo.ecm.directory.resilient;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.commons.logging.Log;
@@ -32,10 +34,12 @@ import org.nuxeo.ecm.core.api.ClientException;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.DocumentModelList;
 import org.nuxeo.ecm.core.api.impl.DocumentModelListImpl;
+import org.nuxeo.ecm.core.schema.SchemaManager;
 import org.nuxeo.ecm.directory.BaseSession;
 import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.Session;
 import org.nuxeo.ecm.directory.api.DirectoryService;
+import org.nuxeo.runtime.api.Framework;
 
 /**
  * Directory session aggregating entries from different sources.
@@ -312,7 +316,7 @@ public class ResilientDirectorySession extends BaseSession {
             } catch (ClientException e) {
                 log.warn(String.format(
                         "Unable to get the entry id %s on master directory '%s'  while updating slave directory",
-                        entryId, masterSubDirectoryInfo.dirName));
+                        entryId, masterSubDirectoryInfo.dirName),e);
             }
             if (docModel != null) {
                 for (SubDirectoryInfo subDirInfo : slaveSubDirectoryInfos) {
@@ -332,17 +336,29 @@ public class ResilientDirectorySession extends BaseSession {
                                     null, schemaName, entryId, null);
                             // Do not set dataModel values with constructor to
                             // force fields dirty
-                            entry.getDataModel(schemaName).setMap(
-                                    docModel.getProperties(schemaName));
+                            Map<String, Object> prepixProps = docModel.getProperties(schemaName);
+                            Map<String, Object> props = new HashMap<String, Object>();
+                            SchemaManager schemaManaer = Framework.getLocalService(SchemaManager.class);
+                            String prefix = schemaManaer.getSchema(schemaName).getNamespace().prefix;
 
-                            subDirInfo.getSession().createEntry(entry);
+                            for (Entry<String, Object> prop : prepixProps.entrySet()) {
+                                //XXX : hack to remove prefix
+                                //Check why SQL session is looking for prefix but LDAP dir provid prefix prop
+                                String key = prop.getKey();
+                                key = key.substring(key.indexOf(":")+1);
+                                props.put(key, prop.getValue());
+                            }
+
+                            entry.getDataModel(schemaName).setMap(props);
+
+                            subDirInfo.getSession().createEntry(props);
                         }
                     }
 
                     catch (ClientException e) {
                         log.warn(String.format(
                                 "Unable to update the slave directory %s on entry id %s",
-                                subDirInfo.dirName, entryId));
+                                subDirInfo.dirName, entryId),e);
                     }
                 }
             } else {
@@ -361,7 +377,7 @@ public class ResilientDirectorySession extends BaseSession {
                 catch (ClientException e) {
                     log.warn(String.format(
                             "Unable to delete the slave directory %s on entry id %s",
-                            subDirInfo.dirName, entryId));
+                            subDirInfo.dirName, entryId),e);
                 }
             }
         }
