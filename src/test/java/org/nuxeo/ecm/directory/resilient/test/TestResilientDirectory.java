@@ -137,7 +137,7 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         deployBundle("org.nuxeo.ecm.directory.resilient");
 
         // Config for the tested bundle
-        deployContrib(TEST_BUNDLE, "directories-config.xml");
+        deployContrib(TEST_BUNDLE, "resilient-memory-directories-config.xml");
 
         // the resilient directory
         resilientDir = (ResilientDirectory) directoryService.getDirectory("resilient");
@@ -162,7 +162,7 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         try {
 
             // Config for the tested bundle
-            deployContrib(TEST_BUNDLE, "read-only-directories-config.xml");
+            deployContrib(TEST_BUNDLE, "resilient-memory-read-only-directories-config.xml");
 
             ResilientDirectory resilientDir = (ResilientDirectory) directoryService.getDirectory("readOnlyResilient");
             ResilientDirectorySession dir = (ResilientDirectorySession) resilientDir.getSession();
