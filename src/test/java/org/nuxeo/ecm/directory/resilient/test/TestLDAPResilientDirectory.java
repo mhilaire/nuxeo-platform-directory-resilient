@@ -34,13 +34,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.nuxeo.ecm.core.api.ClientException;
 import org.nuxeo.ecm.core.api.DocumentModel;
-import org.nuxeo.ecm.core.api.DocumentModelList;
 import org.nuxeo.ecm.directory.Session;
 import org.nuxeo.ecm.directory.api.DirectoryService;
 import org.nuxeo.ecm.directory.ldap.LDAPDirectory;
 import org.nuxeo.ecm.directory.ldap.LDAPDirectoryTestCase;
-import org.nuxeo.ecm.directory.memory.MemoryDirectory;
-import org.nuxeo.ecm.directory.memory.MemoryDirectoryFactory;
 import org.nuxeo.ecm.directory.resilient.ResilientDirectory;
 import org.nuxeo.ecm.directory.resilient.ResilientDirectorySession;
 import org.nuxeo.ecm.directory.sql.SQLDirectoryProxy;
@@ -56,12 +53,6 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
     private static final String TEST_BUNDLE = "org.nuxeo.ecm.directory.resilient.tests";
 
     DirectoryService directoryService;
-
-    MemoryDirectoryFactory memoryDirectoryFactory;
-
-    MemoryDirectory memdir1;
-
-    MemoryDirectory memdir2;
 
     ResilientDirectory resilientDir;
 
@@ -85,8 +76,6 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
 
         // mem dir factory
         directoryService = Framework.getLocalService(DirectoryService.class);
-        memoryDirectoryFactory = new MemoryDirectoryFactory();
-        directoryService.registerDirectory("memdirs", memoryDirectoryFactory);
 
         // create and register mem directories
         Map<String, Object> e;
@@ -95,18 +84,6 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
         Set<String> schema1Set = new HashSet<String>(Arrays.asList("username",
                 "password", "email"));
 
-        // dir 1
-        // Define here the in-memory directory as :
-        //
-        // <directory name="dir1">
-        // <schema>schema1</schema>
-        // <idField>uid</idField>
-        // <passwordField>foo</passwordField>
-        // </directory>
-
-        memdir1 = new MemoryDirectory("memDirectory", "user", schema1Set,
-                "username", "password");
-        memoryDirectoryFactory.registerDirectory(memdir1);
 
         // Bundle to be tested
         deployBundle("org.nuxeo.ecm.directory.resilient");
@@ -130,10 +107,6 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
     @Override
     @After
     public void tearDown() throws Exception {
-        // memoryDirectoryFactory.unregisterDirectory(memdir1);
-        // memoryDirectoryFactory.unregisterDirectory(memdir2);
-        // directoryService.unregisterDirectory("memdirs",
-        // memoryDirectoryFactory);
         super.tearDown();
     }
 
@@ -151,28 +124,14 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
     }
 
     @Test
-    public void testGetEntries() throws Exception {
-        DocumentModelList l;
-        l = resDirSession.getEntries();
-        assertEquals(4, l.size());
-        DocumentModel entry = null;
-        for (DocumentModel e : l) {
-            if (e.getId().equals("user1")) {
-                entry = e;
-                break;
-            }
-        }
+    public void testGetEntry() throws Exception {
+        DocumentModel entry = resDirSession.getEntry("user1");
         assertNotNull(entry);
 
-        // Check why some props are null
-        // assertEquals("uid=user1,ou=people,dc=example,dc=com",
-        // entry.getProperty("user", "dn"));
         Map<String, Object> propsLDAP = ldapSession.getEntry("user1").getProperties(
                 "user");
         shutdownLdapServer();
-        l = resDirSession.getEntries();
-        assertEquals(4, l.size());
-        Map<String, Object> propsSQL = sqlSession.getEntry("user1").getProperties(
+        Map<String, Object> propsSQL = resDirSession.getEntry("user1").getProperties(
                 "user");
         assertEquals(propsLDAP, propsSQL);
 

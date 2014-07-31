@@ -274,26 +274,6 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
     }
 
     @Test
-    public void testGetEntries() throws Exception {
-        DocumentModelList l;
-        l = dir.getEntries();
-        assertEquals(2, l.size());
-        DocumentModel entry = null;
-        for (DocumentModel e : l) {
-            if (e.getId().equals("1")) {
-                entry = e;
-                break;
-            }
-        }
-        assertNotNull(entry);
-        assertEquals("foo1", entry.getProperty("schema1", "foo"));
-
-        Session dir2 = memdir2.getSession();
-        entry = dir2.getEntry("2");
-        assertNull(entry);
-    }
-
-    @Test
     public void testAuthenticate() throws Exception {
         // sub dirs
         Session dir1 = memdir1.getSession();
@@ -501,26 +481,6 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         assertTrue(BaseSession.isReadOnlyEntry(results.get(0)));
         assertTrue(BaseSession.isReadOnlyEntry(results.get(1)));
 
-    }
-
-    @Test
-    public void testReadOnlyEntryInGetEntriesResults() throws Exception {
-        Map<String, String> orderBy = new HashMap<String, String>();
-        orderBy.put("schema1:uid", "asc");
-        DocumentModelComparator comp  = new DocumentModelComparator(orderBy);
-
-        DocumentModelList results = dir.getEntries();
-        Collections.sort(results, comp);
-
-        // by default no backing dir is readonly
-        assertFalse(BaseSession.isReadOnlyEntry(results.get(0)));
-        assertFalse(BaseSession.isReadOnlyEntry(results.get(1)));
-
-        memdir1.setReadOnly(true);
-        results = dir.getEntries();
-        Collections.sort(results, comp);
-        assertTrue(BaseSession.isReadOnlyEntry(results.get(0)));
-        assertTrue(BaseSession.isReadOnlyEntry(results.get(1)));
     }
 
 }
