@@ -14,6 +14,9 @@
 		<!-- The sql slave directory -->
         <subDirectory name="sqlDirectory">
         </subDirectory>
+        
+<!--         <subDirectory name="memDirectory"> -->
+<!--         </subDirectory> -->
     </directory>
 
 

@@ -31,7 +31,7 @@
 <!--           table="user2profile" sourceColumn="profileId" targetColumn="userId" -->
 <!--           dataFile="sample-user-profiles.csv" /> -->
 <!--       </references> -->
-
+		
     </directory>
 
   </extension>

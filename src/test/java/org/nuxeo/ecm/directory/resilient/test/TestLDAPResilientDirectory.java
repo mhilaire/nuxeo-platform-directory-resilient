@@ -24,6 +24,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -31,6 +32,7 @@ import java.util.Set;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.nuxeo.ecm.core.api.ClientException;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.DocumentModelList;
 import org.nuxeo.ecm.directory.Session;
@@ -64,10 +66,12 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
     ResilientDirectory resilientDir;
 
     LDAPDirectory ldapDir;
-    Session ldapSession ;
+
+    Session ldapSession;
 
     SQLDirectoryProxy sqlDir;
-    Session sqlSession ;
+
+    Session sqlSession;
 
     ResilientDirectorySession resDirSession;
 
@@ -76,18 +80,33 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
     public void setUp() throws Exception {
         super.setUp();
         // platform dependencies
-        //deployBundle("org.nuxeo.ecm.core.schema");
-        //deployBundle("org.nuxeo.ecm.directory");
+        // deployBundle("org.nuxeo.ecm.core.schema");
+        // deployBundle("org.nuxeo.ecm.directory");
 
-
+        // mem dir factory
         directoryService = Framework.getLocalService(DirectoryService.class);
+        memoryDirectoryFactory = new MemoryDirectoryFactory();
+        directoryService.registerDirectory("memdirs", memoryDirectoryFactory);
 
+        // create and register mem directories
         Map<String, Object> e;
 
         // Define the schema used for queries
-        Set<String> schema1Set = new HashSet<String>(Arrays.asList("uid",
-                "foo", "bar"));
+        Set<String> schema1Set = new HashSet<String>(Arrays.asList("username",
+                "password", "email"));
 
+        // dir 1
+        // Define here the in-memory directory as :
+        //
+        // <directory name="dir1">
+        // <schema>schema1</schema>
+        // <idField>uid</idField>
+        // <passwordField>foo</passwordField>
+        // </directory>
+
+        memdir1 = new MemoryDirectory("memDirectory", "user", schema1Set,
+                "username", "password");
+        memoryDirectoryFactory.registerDirectory(memdir1);
 
         // Bundle to be tested
         deployBundle("org.nuxeo.ecm.directory.resilient");
@@ -96,7 +115,6 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
         deployContrib(TEST_BUNDLE, "sql-directories-config.xml");
         deployContrib(TEST_BUNDLE, "resilient-ldap-sql-directories-config.xml");
 
-
         // the resilient directory
         resilientDir = (ResilientDirectory) directoryService.getDirectory("resilient");
         resDirSession = (ResilientDirectorySession) resilientDir.getSession();
@@ -104,23 +122,33 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
         ldapDir = getLDAPDirectory("userDirectory");
         ldapSession = ldapDir.getSession();
 
-        sqlDir = (SQLDirectoryProxy) ( directoryService.getDirectory("sqlDirectory"));
+        sqlDir = (SQLDirectoryProxy) (directoryService.getDirectory("sqlDirectory"));
         sqlSession = sqlDir.getSession();
 
     }
 
-
-
     @Override
     @After
     public void tearDown() throws Exception {
-        //memoryDirectoryFactory.unregisterDirectory(memdir1);
-        //memoryDirectoryFactory.unregisterDirectory(memdir2);
-        //directoryService.unregisterDirectory("memdirs", memoryDirectoryFactory);
+        // memoryDirectoryFactory.unregisterDirectory(memdir1);
+        // memoryDirectoryFactory.unregisterDirectory(memdir2);
+        // directoryService.unregisterDirectory("memdirs",
+        // memoryDirectoryFactory);
         super.tearDown();
     }
 
-
+    @Test
+    public void testCreateEntry() throws ClientException {
+        if (USE_EXTERNAL_TEST_LDAP_SERVER) {
+            HashMap<String, Object> e = new HashMap<String, Object>();
+            e.put("username", "myUser");
+            e.put("password", "secret");
+            DocumentModel doc = resDirSession.createEntry(e);
+            assertNotNull(doc);
+            doc = sqlSession.getEntry("myUser");
+            assertNotNull(doc);
+        }
+    }
 
     @Test
     public void testGetEntries() throws Exception {
@@ -136,25 +164,35 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
         }
         assertNotNull(entry);
 
-        //Check why some props are null
-        //assertEquals("uid=user1,ou=people,dc=example,dc=com", entry.getProperty("user", "dn"));
-        Map<String, Object> propsLDAP = ldapSession.getEntry("user1").getProperties("user");
+        // Check why some props are null
+        // assertEquals("uid=user1,ou=people,dc=example,dc=com",
+        // entry.getProperty("user", "dn"));
+        Map<String, Object> propsLDAP = ldapSession.getEntry("user1").getProperties(
+                "user");
         shutdownLdapServer();
         l = resDirSession.getEntries();
         assertEquals(4, l.size());
-        Map<String, Object> propsSQL = sqlSession.getEntry("user1").getProperties("user");
+        Map<String, Object> propsSQL = sqlSession.getEntry("user1").getProperties(
+                "user");
         assertEquals(propsLDAP, propsSQL);
 
     }
 
     @Test
     public void testAuthenticate() throws Exception {
-        assertTrue(resDirSession.authenticate("user1", "user1"));
-        shutdownLdapServer();
-        assertTrue(resDirSession.authenticate("user1", "user1"));
+        //Not possible to authenticate against internal ldap server
+        if (USE_EXTERNAL_TEST_LDAP_SERVER) {
+            assertTrue(ldapSession.authenticate("user1", "secret"));
+            assertTrue(resDirSession.authenticate("user1", "secret"));
+        }
 
     }
 
-
+    // Only for LDAP fallback test purpose
+    protected void shutdownLdapServer() {
+        if (!USE_EXTERNAL_TEST_LDAP_SERVER) {
+            server.shutdownLdapServer();
+        }
+    }
 
 }

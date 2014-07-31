@@ -32,8 +32,9 @@ import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.Reference;
 import org.nuxeo.ecm.directory.Session;
 import org.nuxeo.ecm.directory.api.DirectoryService;
-import org.nuxeo.ecm.directory.ldap.LDAPDirectory;
+import org.nuxeo.ecm.directory.ldap.LDAPDirectoryProxy;
 import org.nuxeo.ecm.directory.sql.SQLDirectory;
+import org.nuxeo.ecm.directory.sql.SQLDirectoryProxy;
 import org.nuxeo.runtime.api.Framework;
 
 /**
@@ -69,7 +70,7 @@ public class ResilientDirectory extends AbstractDirectory {
                     schemaName = dir.getSchema();
                     idField = dir.getIdField();
                     passwordField = dir.getPasswordField();
-                    if (dir instanceof LDAPDirectory) {
+                    if (dir instanceof LDAPDirectoryProxy) {
                         masterIsLDAP = true;
                     }
                     SchemaManager sm = Framework.getLocalService(SchemaManager.class);
@@ -166,12 +167,15 @@ public class ResilientDirectory extends AbstractDirectory {
                             String.format(
                                     "ResilientDirectory '%s' reference a slave directory '%s' that is in read-only mode !",
                                     descriptor.name, subDir.getName()));
-                } else if (subDir instanceof SQLDirectory) {
-                    if (((SQLDirectory) subDir).getConfig().autoincrementIdField) {
+                } else if (subDir instanceof SQLDirectoryProxy) {
+                    if (((SQLDirectory)((SQLDirectoryProxy) subDir).getDirectory()).getConfig().autoincrementIdField) {
                         throw new DirectoryException(
                                 String.format(
                                         "ResilientDirectory '%s' reference a slave SQL directory '%s' that use auto-increment id! This is still not supported by the resilient directory.",
                                         descriptor.name, subDir.getName()));
+                    }else
+                    {
+                        slaveFound = true;
                     }
                 } else {
                     slaveFound = true;

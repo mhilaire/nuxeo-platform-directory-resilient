@@ -34,12 +34,10 @@ import org.nuxeo.ecm.core.api.ClientException;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.DocumentModelList;
 import org.nuxeo.ecm.core.api.impl.DocumentModelListImpl;
-import org.nuxeo.ecm.core.schema.SchemaManager;
 import org.nuxeo.ecm.directory.BaseSession;
 import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.Session;
 import org.nuxeo.ecm.directory.api.DirectoryService;
-import org.nuxeo.runtime.api.Framework;
 
 /**
  * Directory session aggregating entries from different sources.
@@ -299,11 +297,15 @@ public class ResilientDirectorySession extends BaseSession {
      * slave) and slave don't use auto-increment feature (checked in
      * ResilientDirectory constructor)
      *
-     * @param entryId
-     * @param masterHasEntry
+     * @param entryId The id of the entry
+     * @param fieldMap The list of properties to set in addition of the master
+     *            one. Can be null when not needed
+     * @param masterHasEntry True if the master get it, else false. If flase the
+     *            entry will be reomved on slave
      *
      */
-    private void updateMasterOnSlaves(String entryId, boolean masterHasEntry) {
+    private void updateMasterOnSlaves(String entryId,
+            Map<String, Object> fieldMap, boolean masterHasEntry) {
         // if master has entry, update entry on slave, else if it does not exist
         // on slave create it
         // If the master does not have this entry anymore delete it from slave
@@ -314,9 +316,10 @@ public class ResilientDirectorySession extends BaseSession {
                 docModel = masterSubDirectoryInfo.getSession().getEntry(entryId);
 
             } catch (ClientException e) {
-                log.warn(String.format(
-                        "Unable to get the entry id %s on master directory '%s'  while updating slave directory",
-                        entryId, masterSubDirectoryInfo.dirName),e);
+                log.warn(
+                        String.format(
+                                "Unable to get the entry id %s on master directory '%s'  while updating slave directory",
+                                entryId, masterSubDirectoryInfo.dirName), e);
             }
             if (docModel != null) {
                 for (SubDirectoryInfo subDirInfo : slaveSubDirectoryInfos) {
@@ -326,8 +329,18 @@ public class ResilientDirectorySession extends BaseSession {
                                     null, schemaName, entryId, null);
                             // Do not set dataModel values with constructor to
                             // force fields dirty
+
+                            // Init props from master
                             entry.getDataModel(schemaName).setMap(
                                     docModel.getProperties(schemaName));
+                            // Force update with the given properties if there
+                            // are
+                            // Some props are not retrieved from master
+                            // (ex:password)
+                            if (fieldMap != null) {
+                                entry.getDataModel(schemaName).getMap().putAll(
+                                        fieldMap);
+                            }
 
                             subDirInfo.getSession().updateEntry(entry);
 
@@ -336,16 +349,23 @@ public class ResilientDirectorySession extends BaseSession {
                                     null, schemaName, entryId, null);
                             // Do not set dataModel values with constructor to
                             // force fields dirty
-                            Map<String, Object> prepixProps = docModel.getProperties(schemaName);
-                            Map<String, Object> props = new HashMap<String, Object>();
-                            SchemaManager schemaManaer = Framework.getLocalService(SchemaManager.class);
-                            String prefix = schemaManaer.getSchema(schemaName).getNamespace().prefix;
+                            Map<String, Object> prefixProps = docModel.getProperties(schemaName);
+                            // Force update with the given properties if there
+                            // are
+                            // Some props are not retrieved from master
+                            // (ex:password)
+                            if (fieldMap != null) {
+                                prefixProps.putAll(fieldMap);
+                            }
 
-                            for (Entry<String, Object> prop : prepixProps.entrySet()) {
-                                //XXX : hack to remove prefix
-                                //Check why SQL session is looking for prefix but LDAP dir provid prefix prop
+                            Map<String, Object> props = new HashMap<String, Object>();
+
+                            for (Entry<String, Object> prop : prefixProps.entrySet()) {
+                                // XXX : hack to remove prefix
+                                // Check why SQL session is looking for prefix
+                                // but LDAP dir provid prefix prop
                                 String key = prop.getKey();
-                                key = key.substring(key.indexOf(":")+1);
+                                key = key.substring(key.indexOf(":") + 1);
                                 props.put(key, prop.getValue());
                             }
 
@@ -356,9 +376,10 @@ public class ResilientDirectorySession extends BaseSession {
                     }
 
                     catch (ClientException e) {
-                        log.warn(String.format(
-                                "Unable to update the slave directory %s on entry id %s",
-                                subDirInfo.dirName, entryId),e);
+                        log.warn(
+                                String.format(
+                                        "Unable to update the slave directory %s on entry id %s",
+                                        subDirInfo.dirName, entryId), e);
                     }
                 }
             } else {
@@ -375,9 +396,10 @@ public class ResilientDirectorySession extends BaseSession {
                 }
 
                 catch (ClientException e) {
-                    log.warn(String.format(
-                            "Unable to delete the slave directory %s on entry id %s",
-                            subDirInfo.dirName, entryId),e);
+                    log.warn(
+                            String.format(
+                                    "Unable to delete the slave directory %s on entry id %s",
+                                    subDirInfo.dirName, entryId), e);
                 }
             }
         }
@@ -404,7 +426,11 @@ public class ResilientDirectorySession extends BaseSession {
         try {
             boolean authenticated = masterSubDirectoryInfo.getSession().authenticate(
                     username, password);
-            updateMasterOnSlaves(username, authenticated);
+            HashMap<String, Object> fieldMap = new HashMap<String, Object>();
+            fieldMap.put(getIdField(), username);
+            fieldMap.put(getPasswordField(), password);
+            updateMasterOnSlaves(username, fieldMap, authenticated);
+            return authenticated;
         } catch (DirectoryException e) {
             log.warn(
                     String.format(
@@ -460,7 +486,7 @@ public class ResilientDirectorySession extends BaseSession {
         if (entry == null && !errorOccurs) {
             // If the entry is null and no error, remove the entry from
             // slaves
-            updateMasterOnSlaves(id, false);
+            updateMasterOnSlaves(id,null, false);
         } else if (entry == null && errorOccurs) {
             // Try to get the entry from slaves
             for (SubDirectoryInfo subDirectoryInfo : slaveSubDirectoryInfos) {
@@ -475,7 +501,7 @@ public class ResilientDirectorySession extends BaseSession {
 
         } else if (entry != null) {
             // Update the entry to the slaves if needed
-            updateMasterOnSlaves(entry.getId(), true);
+            updateMasterOnSlaves(entry.getId(),null, true);
         }
 
         return entry;
@@ -496,14 +522,14 @@ public class ResilientDirectorySession extends BaseSession {
         // Create/update entries in slave
         for (DocumentModel docModel : masterResults) {
             if (!slaveResults.contains(docModel)) {
-                updateMasterOnSlaves(docModel.getId(), true);
+                updateMasterOnSlaves(docModel.getId(),null, true);
             }
         }
 
         // Delete old entries
         for (DocumentModel docModel : slaveResults) {
             if (!masterResults.contains(docModel)) {
-                updateMasterOnSlaves(docModel.getId(), false);
+                updateMasterOnSlaves(docModel.getId(),null, false);
             }
         }
 
@@ -597,7 +623,7 @@ public class ResilientDirectorySession extends BaseSession {
         // Do not fallback if create on master has failed.
         // The master source must stay the most up-to-date source
         masterSubDirectoryInfo.getSession().createEntry(entry);
-        updateMasterOnSlaves(id, true);
+        updateMasterOnSlaves(id,fieldMap, true);
         return entry;
 
     }
@@ -613,7 +639,7 @@ public class ResilientDirectorySession extends BaseSession {
         // If we are removing a entry from the master, update the slave(s)
         // even if the master is in read-only mode
         masterSubDirectoryInfo.getSession().deleteEntry(id);
-        updateMasterOnSlaves(id, false);
+        updateMasterOnSlaves(id,null, false);
     }
 
     @Override
@@ -639,7 +665,7 @@ public class ResilientDirectorySession extends BaseSession {
         // Do not fallback if update on master has failed.
         // The master source must stay the most up-to-date source
         masterSubDirectoryInfo.getSession().updateEntry(docModel);
-        updateMasterOnSlaves(docModel.getId(), true);
+        updateMasterOnSlaves(docModel.getId(),docModel.getProperties(schemaName), true);
 
     }
 
@@ -764,7 +790,7 @@ public class ResilientDirectorySession extends BaseSession {
         try {
             boolean masterHasEntry = masterSubDirectoryInfo.getSession().hasEntry(
                     id);
-            updateMasterOnSlaves(id, masterHasEntry);
+            updateMasterOnSlaves(id,null, masterHasEntry);
             return masterHasEntry;
         } catch (DirectoryException e) {
             log.warn(
