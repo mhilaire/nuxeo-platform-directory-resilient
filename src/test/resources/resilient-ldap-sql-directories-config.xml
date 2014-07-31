@@ -15,8 +15,6 @@
         <subDirectory name="sqlDirectory">
         </subDirectory>
         
-<!--         <subDirectory name="memDirectory"> -->
-<!--         </subDirectory> -->
     </directory>
 
 

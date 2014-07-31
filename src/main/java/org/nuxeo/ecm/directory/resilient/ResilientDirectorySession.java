@@ -538,65 +538,7 @@ public class ResilientDirectorySession extends BaseSession {
     @Override
     @SuppressWarnings("boxing")
     public DocumentModelList getEntries() throws ClientException {
-        init();
-
-        try {
-            // XXX : Should we update all entries on slave : performance issue
-            // ???
-            // => or just warn that list entries are coming from slaves
-            // =>Maybe we should perform a cron job for synchronize the entire
-            // directory
-
-            // list of master entries
-            final DocumentModelList masterResults = masterSubDirectoryInfo.getSession().getEntries();
-            DocumentModelList slaveResults = null;
-
-            for (SubDirectoryInfo subDirectoryInfo : slaveSubDirectoryInfos) {
-                try {
-                    slaveResults = subDirectoryInfo.getSession().getEntries();
-
-                    bulkUpdateMasterOnSlave(masterResults, slaveResults);
-
-                } catch (ClientException exc) {
-                    log.warn(
-                            String.format(
-                                    "Resilient directory '%s' : Unable to get list of entries on slave directory '%s'for synchronization",
-                                    descriptor.name,
-                                    masterSubDirectoryInfo.dirName), exc);
-                }
-            }
-            return masterResults;
-        } catch (ClientException e) {
-            log.warn(
-                    String.format(
-                            "Resilient directory '%s' : Unable to get list of entries on master directory '%s', fallback on slaves",
-                            descriptor.name, masterSubDirectoryInfo.dirName), e);
-
-            DocumentModelList slaveResults = new DocumentModelListImpl();
-            // Try to get the entry from slaves
-            for (SubDirectoryInfo subDirectoryInfo : slaveSubDirectoryInfos) {
-                try {
-                    slaveResults.addAll(subDirectoryInfo.getSession().getEntries());
-                    break;
-                } catch (ClientException exc) {
-                    log.warn(
-                            String.format(
-                                    "Resilient directory '%s' : Unable to get list of entries on slave directory '%s', fallback on another slave if it exists",
-                                    descriptor.name,
-                                    masterSubDirectoryInfo.dirName), e);
-                }
-            }
-
-            if (isReadOnly()) {
-                for (DocumentModel documentModel : slaveResults) {
-                    setReadOnlyEntry(documentModel);
-                }
-            }
-
-            return slaveResults;
-
-        }
-
+       throw new UnsupportedOperationException("Get entries may be deprecated !");
     }
 
     @Override
