@@ -34,10 +34,12 @@ import org.nuxeo.ecm.core.api.ClientException;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.DocumentModelList;
 import org.nuxeo.ecm.core.api.impl.DocumentModelListImpl;
+import org.nuxeo.ecm.core.schema.SchemaManager;
 import org.nuxeo.ecm.directory.BaseSession;
 import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.Session;
 import org.nuxeo.ecm.directory.api.DirectoryService;
+import org.nuxeo.runtime.api.Framework;
 
 /**
  * Directory session aggregating entries from different sources.
@@ -486,7 +488,7 @@ public class ResilientDirectorySession extends BaseSession {
         if (entry == null && !errorOccurs) {
             // If the entry is null and no error, remove the entry from
             // slaves
-            updateMasterOnSlaves(id,null, false);
+            updateMasterOnSlaves(id, null, false);
         } else if (entry == null && errorOccurs) {
             // Try to get the entry from slaves
             for (SubDirectoryInfo subDirectoryInfo : slaveSubDirectoryInfos) {
@@ -501,7 +503,7 @@ public class ResilientDirectorySession extends BaseSession {
 
         } else if (entry != null) {
             // Update the entry to the slaves if needed
-            updateMasterOnSlaves(entry.getId(),null, true);
+            updateMasterOnSlaves(entry.getId(), null, true);
         }
 
         return entry;
@@ -522,14 +524,14 @@ public class ResilientDirectorySession extends BaseSession {
         // Create/update entries in slave
         for (DocumentModel docModel : masterResults) {
             if (!slaveResults.contains(docModel)) {
-                updateMasterOnSlaves(docModel.getId(),null, true);
+                updateMasterOnSlaves(docModel.getId(), null, true);
             }
         }
 
         // Delete old entries
         for (DocumentModel docModel : slaveResults) {
             if (!masterResults.contains(docModel)) {
-                updateMasterOnSlaves(docModel.getId(),null, false);
+                updateMasterOnSlaves(docModel.getId(), null, false);
             }
         }
 
@@ -538,7 +540,8 @@ public class ResilientDirectorySession extends BaseSession {
     @Override
     @SuppressWarnings("boxing")
     public DocumentModelList getEntries() throws ClientException {
-       throw new UnsupportedOperationException("Get entries may be deprecated !");
+        throw new UnsupportedOperationException(
+                "Get entries may be deprecated !");
     }
 
     @Override
@@ -550,7 +553,20 @@ public class ResilientDirectorySession extends BaseSession {
             return null;
         }
 
-        final Object rawid = fieldMap.get(schemaIdField);
+        // Deal with prefix : add prefix ahead of the name, beacu the map will
+        // contain prefixed fields
+        SchemaManager schemaManager = Framework.getLocalService(SchemaManager.class);
+        String prefix = schemaManager.getSchema(schemaName).getNamespace().prefix;
+        StringBuilder sbField = new StringBuilder();
+
+        String schemaField = schemaIdField;
+        if (prefix != null && !prefix.isEmpty()) {
+            sbField.append(prefix);
+            sbField.append(":");
+            sbField.append(schemaIdField);
+            schemaField = sbField.toString();
+        }
+        final Object rawid = fieldMap.get(schemaField);
         if (rawid == null) {
             throw new DirectoryException(String.format(
                     "Entry is missing id field '%s'", schemaIdField));
@@ -565,7 +581,7 @@ public class ResilientDirectorySession extends BaseSession {
         // Do not fallback if create on master has failed.
         // The master source must stay the most up-to-date source
         masterSubDirectoryInfo.getSession().createEntry(entry);
-        updateMasterOnSlaves(id,fieldMap, true);
+        updateMasterOnSlaves(id, fieldMap, true);
         return entry;
 
     }
@@ -581,7 +597,7 @@ public class ResilientDirectorySession extends BaseSession {
         // If we are removing a entry from the master, update the slave(s)
         // even if the master is in read-only mode
         masterSubDirectoryInfo.getSession().deleteEntry(id);
-        updateMasterOnSlaves(id,null, false);
+        updateMasterOnSlaves(id, null, false);
     }
 
     @Override
@@ -607,7 +623,8 @@ public class ResilientDirectorySession extends BaseSession {
         // Do not fallback if update on master has failed.
         // The master source must stay the most up-to-date source
         masterSubDirectoryInfo.getSession().updateEntry(docModel);
-        updateMasterOnSlaves(docModel.getId(),docModel.getProperties(schemaName), true);
+        updateMasterOnSlaves(docModel.getId(),
+                docModel.getProperties(schemaName), true);
 
     }
 
@@ -732,7 +749,7 @@ public class ResilientDirectorySession extends BaseSession {
         try {
             boolean masterHasEntry = masterSubDirectoryInfo.getSession().hasEntry(
                     id);
-            updateMasterOnSlaves(id,null, masterHasEntry);
+            updateMasterOnSlaves(id, null, masterHasEntry);
             return masterHasEntry;
         } catch (DirectoryException e) {
             log.warn(

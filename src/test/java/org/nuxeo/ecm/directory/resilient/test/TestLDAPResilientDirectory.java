@@ -24,7 +24,9 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -49,17 +51,29 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
 
     DirectoryService directoryService;
 
-    ResilientDirectory resilientDir;
+    ResilientDirectory resilientUserDir;
 
-    LDAPDirectory ldapDir;
+    LDAPDirectory ldapUserDir;
 
-    Session ldapSession;
+    Session ldapUserSession;
 
-    SQLDirectoryProxy sqlDir;
+    SQLDirectoryProxy sqlUserDir;
 
-    Session sqlSession;
+    Session sqlUserSession;
 
-    ResilientDirectorySession resDirSession;
+    ResilientDirectorySession resUserDirSession;
+
+    private Session sqlGroupSession;
+
+    private SQLDirectoryProxy sqlGroupDir;
+
+    private Session ldapGroupSession;
+
+    private LDAPDirectory ldapGroupDir;
+
+    private ResilientDirectorySession resGroupDirSession;
+
+    private ResilientDirectory resilientGroupDir;
 
     @Override
     @Before
@@ -75,15 +89,27 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
         // Config for the tested bundle
         deployContrib(TEST_BUNDLE, "resilient-ldap-sql-directories-config.xml");
 
-        // the resilient directory
-        resilientDir = (ResilientDirectory) directoryService.getDirectory("resilientUserDirectory");
-        resDirSession = (ResilientDirectorySession) resilientDir.getSession();
+        // the USER resilient directory
+        resilientUserDir = (ResilientDirectory) directoryService.getDirectory("resilientUserDirectory");
+        resUserDirSession = (ResilientDirectorySession) resilientUserDir.getSession();
 
-        ldapDir = getLDAPDirectory("ldapUserDirectory");
-        ldapSession = ldapDir.getSession();
+        ldapUserDir = getLDAPDirectory("ldapUserDirectory");
+        ldapUserSession = ldapUserDir.getSession();
 
-        sqlDir = (SQLDirectoryProxy) (directoryService.getDirectory("sqlUserDirectory"));
-        sqlSession = sqlDir.getSession();
+        sqlUserDir = (SQLDirectoryProxy) (directoryService.getDirectory("sqlUserDirectory"));
+        sqlUserSession = sqlUserDir.getSession();
+
+        // the GROUP resilient directory
+        resilientGroupDir = (ResilientDirectory) directoryService.getDirectory("resilientGroupDirectory");
+        resGroupDirSession = (ResilientDirectorySession) resilientGroupDir.getSession();
+
+        ldapGroupDir = getLDAPDirectory("ldapGroupDirectory");
+        ldapGroupSession = ldapGroupDir.getSession();
+
+        sqlGroupDir = (SQLDirectoryProxy) (directoryService.getDirectory("sqlGroupDirectory"));
+        sqlGroupSession = sqlGroupDir.getSession();
+
+
 
     }
 
@@ -99,24 +125,45 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
             HashMap<String, Object> e = new HashMap<String, Object>();
             e.put("username", "myUser");
             e.put("password", "secret");
-            DocumentModel doc = resDirSession.createEntry(e);
+            DocumentModel doc = resUserDirSession.createEntry(e);
             assertNotNull(doc);
-            doc = sqlSession.getEntry("myUser");
+            doc = sqlUserSession.getEntry("myUser");
             assertNotNull(doc);
         }
     }
 
     @Test
     public void testGetEntry() throws Exception {
-        DocumentModel entry = resDirSession.getEntry("user1");
+        DocumentModel entry = resUserDirSession.getEntry("user1");
         assertNotNull(entry);
 
-        Map<String, Object> propsLDAP = ldapSession.getEntry("user1").getProperties(
+        Map<String, Object> propsLDAP = ldapUserSession.getEntry("user1").getProperties(
                 "user");
         shutdownLdapServer();
-        Map<String, Object> propsSQL = resDirSession.getEntry("user1").getProperties(
+        Map<String, Object> propsSQL = resUserDirSession.getEntry("user1").getProperties(
                 "user");
         assertEquals(propsLDAP, propsSQL);
+
+    }
+
+    @Test
+    public void testGetUserGroup() throws Exception {
+        if (USE_EXTERNAL_TEST_LDAP_SERVER) {
+            DocumentModel ldapUser = resUserDirSession.getEntry("user1");
+            assertNotNull(ldapUser);
+            List<String> ldapUserGroups = (List<String>) ldapUser.getProperty("user", "groups");
+            assertNotNull(ldapUserGroups);
+
+            DocumentModel sqlUser = sqlUserSession.getEntry("user1");
+            assertNotNull(sqlUser);
+            List<String> sqlUserGroups = (List<String>) sqlUser.getProperty("user", "groups");
+            assertEquals(ldapUserGroups, sqlUserGroups);
+
+            DocumentModel ldapGroup = ldapGroupSession.getEntry(sqlUserGroups.get(0));
+            resGroupDirSession.getEntry(ldapGroup.getId());
+            DocumentModel sqlGroup = sqlGroupSession.getEntry(sqlUserGroups.get(0));
+            assertEquals(ldapGroup, sqlGroup);
+        }
 
     }
 
@@ -124,8 +171,8 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
     public void testAuthenticate() throws Exception {
         //Not possible to authenticate against internal ldap server
         if (USE_EXTERNAL_TEST_LDAP_SERVER) {
-            assertTrue(ldapSession.authenticate("user1", "secret"));
-            assertTrue(resDirSession.authenticate("user1", "secret"));
+            assertTrue(ldapUserSession.authenticate("user1", "secret"));
+            assertTrue(resUserDirSession.authenticate("user1", "secret"));
         }
 
     }

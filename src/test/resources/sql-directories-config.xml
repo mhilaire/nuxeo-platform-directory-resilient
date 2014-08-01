@@ -58,7 +58,7 @@
 					/> -->
 
 				<tableReference field="subGroups" directory="sqlGroupDirectory"
-					table="group2SubGroup" sourceColumn="groupId" targetColumn="groupId" />
+					table="group2SubGroup" sourceColumn="groupId" targetColumn="subgroupId" />
 
 				<!-- <ldapReference field="subGroups" directory="groupDirectory" -->
 				<!-- staticAttributeId="uniqueMember" dynamicAttributeId="memberURL" 
