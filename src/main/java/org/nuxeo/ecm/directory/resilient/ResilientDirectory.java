@@ -32,7 +32,6 @@ import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.Reference;
 import org.nuxeo.ecm.directory.Session;
 import org.nuxeo.ecm.directory.api.DirectoryService;
-import org.nuxeo.ecm.directory.ldap.LDAPDirectoryProxy;
 import org.nuxeo.ecm.directory.sql.SQLDirectory;
 import org.nuxeo.ecm.directory.sql.SQLDirectoryProxy;
 import org.nuxeo.runtime.api.Framework;
@@ -49,8 +48,6 @@ public class ResilientDirectory extends AbstractDirectory {
     private String idField = null;
 
     private String passwordField = null;
-
-    private boolean masterIsLDAP = false;
 
     private final ResilientDirectoryDescriptor descriptor;
 
@@ -70,9 +67,6 @@ public class ResilientDirectory extends AbstractDirectory {
                     schemaName = dir.getSchema();
                     idField = dir.getIdField();
                     passwordField = dir.getPasswordField();
-                    if (dir instanceof LDAPDirectoryProxy) {
-                        masterIsLDAP = true;
-                    }
                     SchemaManager sm = Framework.getLocalService(SchemaManager.class);
                     Schema sch = sm.getSchema(schemaName);
                     if (sch == null) {
@@ -90,14 +84,6 @@ public class ResilientDirectory extends AbstractDirectory {
                                 String.format(
                                         "Directory '%s' schema '%s' has no id field '%s'",
                                         dir.getName(), schemaName, idField));
-                    }
-                    if (masterIsLDAP) {
-                        if (passwordField == null) {
-                            throw new DirectoryException(String.format(
-                                    "Master LDAP subdirectory '%s' "
-                                            + "has not a password field !",
-                                    dir.getName()));
-                        }
                     }
                     masterSchemaName = schemaName;
 
@@ -214,9 +200,6 @@ public class ResilientDirectory extends AbstractDirectory {
         return passwordField;
     }
 
-    public boolean masterIsLDAP() {
-        return masterIsLDAP;
-    }
 
     @Override
     public Session getSession() throws DirectoryException {

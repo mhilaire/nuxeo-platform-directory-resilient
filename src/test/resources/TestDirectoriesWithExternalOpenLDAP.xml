@@ -42,7 +42,7 @@
   <extension target="org.nuxeo.ecm.directory.ldap.LDAPDirectoryFactory"
     point="directories">
 
-    <directory name="userDirectory">
+    <directory name="ldapUserDirectory">
       <server>default</server>
       <schema>user</schema>
       <idField>username</idField>
@@ -72,14 +72,14 @@
 
       <references>
 
-        <inverseReference field="groups" directory="groupDirectory"
+        <inverseReference field="groups" directory="ldapGroupDirectory"
           dualReferenceField="members" />
 
       </references>
 
     </directory>
 
-    <directory name="groupDirectory">
+    <directory name="ldapGroupDirectory">
       <server>default</server>
       <schema>group</schema>
       <idField>groupname</idField>
@@ -105,54 +105,15 @@
 
       <references>
 
-        <ldapReference field="members" directory="userDirectory"
+        <ldapReference field="members" directory="ldapUserDirectory"
           staticAttributeId="uniqueMember" dynamicAttributeId="memberURL" />
 
-        <ldapReference field="subGroups" directory="groupDirectory"
+        <ldapReference field="subGroups" directory="ldapGroupDirectory"
           staticAttributeId="uniqueMember" dynamicAttributeId="memberURL" />
 
-        <ldapTreeReference field="ldapDirectChildren" directory="groupDirectory"
-          scope="onelevel" />
-        <ldapTreeReference field="ldapChildren" directory="groupDirectory"
-          scope="subtree" />
-        <ldapTreeReference field="ldapUnitDirectChildren"
-          directory="unitDirectory" scope="onelevel" />
-
-        <inverseReference field="parentGroups" directory="groupDirectory"
+        <inverseReference field="parentGroups" directory="ldapGroupDirectory"
           dualReferenceField="subGroups" />
 
-        <inverseReference field="ldapDirectParents" directory="groupDirectory"
-          dualReferenceField="ldapDirectChildren" />
-        <inverseReference field="ldapParents" directory="groupDirectory"
-          dualReferenceField="ldapChildren" />
-
-      </references>
-
-    </directory>
-
-    <!-- unit directory, taking organizationalUnit instance in the groups branch -->
-    <directory name="unitDirectory">
-      <server>default</server>
-      <schema>group</schema>
-      <idField>groupname</idField>
-
-      <searchBaseDn>ou=groups,dc=example,dc=com</searchBaseDn>
-      <searchFilter>(objectClass=organizationalUnit)</searchFilter>
-      <searchScope>subtree</searchScope>
-
-      <readOnly>false</readOnly>
-
-      <creationBaseDn>ou=groups,dc=example,dc=com</creationBaseDn>
-      <creationClass>top</creationClass>
-      <creationClass>organizationalUnit</creationClass>
-      <rdnAttribute>ou</rdnAttribute>
-
-      <fieldMapping name="groupname">ou</fieldMapping>
-
-      <references>
-        <inverseReference field="ldapUnitDirectParents"
-          directory="groupDirectory"
-          dualReferenceField="ldapUnitDirectChildren" />
       </references>
 
     </directory>

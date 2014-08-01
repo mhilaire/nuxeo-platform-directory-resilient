@@ -126,10 +126,10 @@ public abstract class LDAPDirectoryTestCase extends SQLRepositoryTestCase {
             deployTestContrib("org.nuxeo.ecm.directory.resilient.tests",
                     INTERNAL_SERVER_SETUP);
             server = new MockLdapServer(new File(Framework.getRuntime().getHome(), "ldap"));
-            getLDAPDirectory("userDirectory").setTestServer(server);
-            getLDAPDirectory("groupDirectory").setTestServer(server);
+            getLDAPDirectory("ldapUserDirectory").setTestServer(server);
+            getLDAPDirectory("ldapGroupDirectory").setTestServer(server);
         }
-        LDAPSession session = (LDAPSession) getLDAPDirectory("userDirectory").getSession();
+        LDAPSession session = (LDAPSession) getLDAPDirectory("ldapUserDirectory").getSession();
         try {
             DirContext ctx = session.getContext();
             for (String ldifFile : getLdifFiles()) {
@@ -145,7 +145,7 @@ public abstract class LDAPDirectoryTestCase extends SQLRepositoryTestCase {
         try {
             if (USE_EXTERNAL_TEST_LDAP_SERVER) {
                 LDAPSession session = (LDAPSession) getLDAPDirectory(
-                        "userDirectory").getSession();
+                        "ldapUserDirectory").getSession();
                 try {
                     DirContext ctx = session.getContext();
                     destroyRecursively("ou=people,dc=example,dc=com", ctx, -1);

@@ -5,18 +5,29 @@
     target="org.nuxeo.ecm.directory.resilient.ResilientDirectoryFactory"
     point="directories">
 
-    <directory name="resilient">
+    <directory name="resilientUserDirectory">
 
 		<!-- The LDAP user directory (defined in the LDAP test case) -->
-        <subDirectory name="userDirectory" master="true">
+        <subDirectory name="ldapUserDirectory" master="true">
         </subDirectory>
 		
 		<!-- The sql slave directory -->
-        <subDirectory name="sqlDirectory">
+        <subDirectory name="sqlUserDirectory">
         </subDirectory>
         
     </directory>
+	
+	<directory name="resilientGroupDirectory">
 
+		<!-- The LDAP user directory (defined in the LDAP test case) -->
+        <subDirectory name="ldapGroupDirectory" master="true">
+        </subDirectory>
+		
+		<!-- The sql slave directory -->
+        <subDirectory name="sqlGroupDirectory">
+        </subDirectory>
+        
+    </directory>
 
   </extension>
 

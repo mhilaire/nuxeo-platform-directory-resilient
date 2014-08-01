@@ -2,38 +2,75 @@
 
 <component name="org.nuxeo.ecm.directory.resilient.sql.test">
 
-  <require>org.nuxeo.ecm.directory.sql.SQLDirectoryFactory</require>
+	<require>org.nuxeo.ecm.directory.sql.SQLDirectoryFactory</require>
 
-  <extension target="org.nuxeo.ecm.directory.sql.SQLDirectoryFactory"
-    point="directories">
+	<extension target="org.nuxeo.ecm.directory.sql.SQLDirectoryFactory"
+		point="directories">
 
-    <directory name="sqlDirectory">
+		<directory name="sqlUserDirectory">
 
-      <schema>user</schema>
+			<schema>user</schema>
 
-      <dbDriver>${nuxeo.test.vcs.driver}</dbDriver>
-      <dbUrl>${nuxeo.test.vcs.url}</dbUrl>
-      <dbUser>${nuxeo.test.vcs.user}</dbUser>
-      <dbPassword>${nuxeo.test.vcs.password}</dbPassword>
+			<dbDriver>${nuxeo.test.vcs.driver}</dbDriver>
+			<dbUrl>${nuxeo.test.vcs.url}</dbUrl>
+			<dbUser>${nuxeo.test.vcs.user}</dbUser>
+			<dbPassword>${nuxeo.test.vcs.password}</dbPassword>
 
-      <table>user</table>
-      <idField>username</idField>
-      <passwordField>password</passwordField>
-      <autoincrementIdField>false</autoincrementIdField>
-<!--       <dataFile>sample-profiles.csv</dataFile> -->
-      <!-- as it's a memory directory, need to refetch
-        values every time -->
-      <createTablePolicy>always</createTablePolicy>
-      <autoincrementIdField>false</autoincrementIdField>
+			<table>user</table>
+			<idField>username</idField>
+			<passwordField>password</passwordField>
 
-<!--       <references> -->
-<!--         <tableReference field="users" directory="userDirectory" -->
-<!--           table="user2profile" sourceColumn="profileId" targetColumn="userId" -->
-<!--           dataFile="sample-user-profiles.csv" /> -->
-<!--       </references> -->
-		
-    </directory>
+			<createTablePolicy>always</createTablePolicy>
+			<autoincrementIdField>false</autoincrementIdField>
 
-  </extension>
+			<references>
+
+				<inverseReference field="groups" directory="sqlGroupDirectory"
+					dualReferenceField="members" />
+
+			</references>
+
+		</directory>
+
+		<directory name="sqlGroupDirectory">
+			<schema>group</schema>
+			<idField>groupname</idField>
+
+			<dbDriver>${nuxeo.test.vcs.driver}</dbDriver>
+			<dbUrl>${nuxeo.test.vcs.url}</dbUrl>
+			<dbUser>${nuxeo.test.vcs.user}</dbUser>
+			<dbPassword>${nuxeo.test.vcs.password}</dbPassword>
+			<table>group</table>
+			
+			<createTablePolicy>always</createTablePolicy>
+			<autoincrementIdField>false</autoincrementIdField>
+
+			<readOnly>false</readOnly>
+
+
+			<references>
+
+				<tableReference field="members" directory="sqlUserDirectory"
+					table="user2group" sourceColumn="groupId" targetColumn="userId" />
+
+				<!-- <ldapReference field="members" directory="userDirectory" -->
+				<!-- staticAttributeId="uniqueMember" dynamicAttributeId="memberURL" 
+					/> -->
+
+				<tableReference field="subGroups" directory="sqlGroupDirectory"
+					table="group2SubGroup" sourceColumn="groupId" targetColumn="groupId" />
+
+				<!-- <ldapReference field="subGroups" directory="groupDirectory" -->
+				<!-- staticAttributeId="uniqueMember" dynamicAttributeId="memberURL" 
+					/> -->
+
+				<inverseReference field="parentGroups" directory="sqlGroupDirectory"
+					dualReferenceField="subGroups" />
+
+			</references>
+
+		</directory>
+
+	</extension>
 
 </component>
