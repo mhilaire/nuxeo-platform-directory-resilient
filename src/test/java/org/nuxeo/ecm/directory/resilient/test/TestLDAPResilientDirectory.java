@@ -23,12 +23,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,7 +33,6 @@ import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.directory.Session;
 import org.nuxeo.ecm.directory.api.DirectoryService;
 import org.nuxeo.ecm.directory.ldap.LDAPDirectory;
-import org.nuxeo.ecm.directory.ldap.LDAPDirectoryTestCase;
 import org.nuxeo.ecm.directory.resilient.ResilientDirectory;
 import org.nuxeo.ecm.directory.resilient.ResilientDirectorySession;
 import org.nuxeo.ecm.directory.sql.SQLDirectoryProxy;
@@ -77,26 +72,18 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
         // mem dir factory
         directoryService = Framework.getLocalService(DirectoryService.class);
 
-        // create and register mem directories
-        Map<String, Object> e;
-
-        // Define the schema used for queries
-        Set<String> schema1Set = new HashSet<String>(Arrays.asList("username",
-                "password", "email"));
-
-
         // Bundle to be tested
         deployBundle("org.nuxeo.ecm.directory.resilient");
 
         // Config for the tested bundle
-        deployContrib(TEST_BUNDLE, "sql-directories-config.xml");
+//        deployContrib(TEST_BUNDLE, "sql-directories-config.xml");
         deployContrib(TEST_BUNDLE, "resilient-ldap-sql-directories-config.xml");
 
         // the resilient directory
         resilientDir = (ResilientDirectory) directoryService.getDirectory("resilient");
         resDirSession = (ResilientDirectorySession) resilientDir.getSession();
 
-        ldapDir = getLDAPDirectory("userDirectory");
+        ldapDir = getLDAPDirectory("ldapUserDirectory");
         ldapSession = ldapDir.getSession();
 
         sqlDir = (SQLDirectoryProxy) (directoryService.getDirectory("sqlDirectory"));
