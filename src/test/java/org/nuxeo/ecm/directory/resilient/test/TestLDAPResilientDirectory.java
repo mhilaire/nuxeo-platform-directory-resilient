@@ -65,9 +65,6 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        // platform dependencies
-        // deployBundle("org.nuxeo.ecm.core.schema");
-        // deployBundle("org.nuxeo.ecm.directory");
 
         // mem dir factory
         directoryService = Framework.getLocalService(DirectoryService.class);
@@ -76,17 +73,16 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
         deployBundle("org.nuxeo.ecm.directory.resilient");
 
         // Config for the tested bundle
-//        deployContrib(TEST_BUNDLE, "sql-directories-config.xml");
         deployContrib(TEST_BUNDLE, "resilient-ldap-sql-directories-config.xml");
 
         // the resilient directory
-        resilientDir = (ResilientDirectory) directoryService.getDirectory("resilient");
+        resilientDir = (ResilientDirectory) directoryService.getDirectory("resilientUserDirectory");
         resDirSession = (ResilientDirectorySession) resilientDir.getSession();
 
         ldapDir = getLDAPDirectory("ldapUserDirectory");
         ldapSession = ldapDir.getSession();
 
-        sqlDir = (SQLDirectoryProxy) (directoryService.getDirectory("sqlDirectory"));
+        sqlDir = (SQLDirectoryProxy) (directoryService.getDirectory("sqlUserDirectory"));
         sqlSession = sqlDir.getSession();
 
     }

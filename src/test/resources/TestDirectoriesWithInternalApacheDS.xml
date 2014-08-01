@@ -40,7 +40,7 @@
   <extension target="org.nuxeo.ecm.directory.ldap.LDAPDirectoryFactory"
     point="directories">
 
-    <directory name="userDirectory">
+    <directory name="ldapUserDirectory">
       <server>default</server>
       <schema>user</schema>
       <idField>username</idField>
@@ -73,7 +73,7 @@
 
     </directory>
 
-    <directory name="groupDirectory">
+    <directory name="ldapGroupDirectory">
 
       <server>default</server>
       <schema>group</schema>
