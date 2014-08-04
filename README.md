@@ -1,4 +1,4 @@
-nuxeo-directory-connector
+nuxeo-platform-resilient-directory
 =========================
 
 ## What is this project ?
@@ -9,26 +9,85 @@ The aim is to provide a fallback behavior when the master subdirectory falls.
 
 ## Why would you use this ?
 
-You should consider this as a sample code that you can use as a guide to implement a new type of Directory on top of a custom service provider.
+You should consider this as a plugin that you can use as a patch when you have some bad LDAP or bad network
 
-Typical use case is to wrapp a remote WebService as a Nuxeo Directory.
+Typical use case ensure that users can login even if the master subdirectory (ex:LDAP) is not available. You should add more slaves subdirectory to ensure the application availability.
 
-Usaing a directory to wrap a WebService provides some direct benefits :
+(useful sample configuration can be found in the src/test/resources folder)
+The configuration require the following steps :
+ 1-Define your LDAP/SQL directories : 
+       - Define 2 standard LDAP directories (One for users the other one for groups) and add references
+       - Define 2 standard SQL directories for mirroring (One for users, one for groups and add references)
+       Example :
+       - LDAP directory config :
+       
+       <directory name="ldapUserDirectory">
+       ...
+       add reference to ldap group directory
+       </directory>
+       <directory name="ldapGroupDirectory">
+       ...
+       add reference to ldap user directory
+       </directory>
+       
+  	   - SQL directory config :
+              
+       <directory name="sqlUserDirectory">
+       ...
+       add reference to ldap group directory
+       </directory>
+       <directory name="sqlGroupDirectory">
+       ...
+       add reference to sql user directory
+       </directory>
+       
+ 2-Define your resilient directory :
+        - Define one resilient directory for users
+        - Add as sub directories your LDAP and SQL users directories
+        - Flag the LDAP as "master"
+        - Define one resilient directory for groups
+        - Add as sub directories your LDAP and SQL groups directories
+        - Flag the LDAP as "master"
+ 
+ Example :
+ 
+        <directory name ="resilientUserDirectory">
+        
+            <subDirectory name="ldapUserDirectory" master="true"/>
 
- - ability to use a XSD schema to define the structure of the entities your expose 
+            <subDirectory name="sqlUserDirectory"/>
+            
+        </directory>
+        
+        <directory name="resilientGroupDirectory">
+        
+            <subDirectory name="ldapGroupDirectory" master="true"/>
 
-      - entries are exposed as DocumentModels
-      - you can then use Nuxeo Layout system to define display 
-      - you can then use Nuxeo Studio to do this configuration
+            <subDirectory name="sqlGroupDirectory"/>
+            
+        </directory>
+ 
+3-Add a contrib for userManager service and extend the standard userManager :
+        - Set as "users" your resilient user directory
+        - Set as "groups" your resilient group directory
+Example :
 
- - ability to reuse existing Directory features
+      <userManager>
+	      <defaultAdministratorId>Administrator</defaultAdministratorId>
+	      <administratorsGroup>administrators</administratorsGroup>
+	      <defaultGroup>members</defaultGroup>
+	      <users>
+	        <directory>resilientUserDirectory</directory>
+	      </users>
+	      <groups>
+	        <directory>resilientGroupDirectory</directory>
+	      </groups>
+    </userManager>       
 
-      - Field Mapping
-      - Entries caching
-      - Widgets to search / select an entry
+
 
 ## History
 
-This code was initially written against a Nuxeo 5.9 to be able to resuse a custom WebService as user provider.
+This code was initially written against a Nuxeo 5.9 
 
 
