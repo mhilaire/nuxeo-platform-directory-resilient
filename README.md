@@ -84,6 +84,15 @@ Example :
 	      </groups>
     </userManager>       
 
+## Prerequisite 
+Prerequisite to add a resilient directory:
+	- Can have only ONE master
+	- At least one slave in write mode
+	- The slave's schema must be the same than the master
+	- The slave must used the same idField/passworField than the master
+	- All SQL sub directory must not use auto-increment id
+	All master definitions (schema,mode,fields) will be used as the resilient definitions.
+	No need to duplicate definition in the resilient config  
 
 
 ## History
