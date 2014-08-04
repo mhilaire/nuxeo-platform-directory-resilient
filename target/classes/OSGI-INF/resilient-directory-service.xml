@@ -28,11 +28,20 @@
         ...
         <directory name="resilientUserDirectory">
         
-            <subDirectory name="ldapusers" master="true"/>
+            <subDirectory name="ldapUserDirectory" master="true"/>
 
             <subDirectory name="sqlUserDirectory"/>
             
         </directory>
+        
+        <directory name="resilientGroupDirectory">
+        
+            <subDirectory name="ldapGroupDirectory" master="true"/>
+
+            <subDirectory name="sqlGroupDirectory"/>
+            
+        </directory>
+        
         ...
       </code>
 	Where each referenced subDirectory must be declared in an extension point.
