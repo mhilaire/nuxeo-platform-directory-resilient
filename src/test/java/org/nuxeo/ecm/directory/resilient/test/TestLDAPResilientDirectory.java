@@ -123,8 +123,8 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
     public void testCreateEntry() throws ClientException {
         if (USE_EXTERNAL_TEST_LDAP_SERVER) {
             HashMap<String, Object> e = new HashMap<String, Object>();
-            e.put("username", "myUser");
-            e.put("password", "secret");
+            e.put("usr:username", "myUser");
+            e.put("usr:password", "secret");
             DocumentModel doc = resUserDirSession.createEntry(e);
             assertNotNull(doc);
             doc = sqlUserSession.getEntry("myUser");
@@ -171,7 +171,8 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
     public void testAuthenticate() throws Exception {
         //Not possible to authenticate against internal ldap server
         if (USE_EXTERNAL_TEST_LDAP_SERVER) {
-            assertTrue(ldapUserSession.authenticate("user1", "secret"));
+            assertTrue(resUserDirSession.authenticate("user1", "secret"));
+            //Shutdown manually your external LDAP to test fallback
             assertTrue(resUserDirSession.authenticate("user1", "secret"));
         }
 

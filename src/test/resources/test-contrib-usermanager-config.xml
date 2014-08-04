@@ -5,9 +5,10 @@
 
   <extension target="org.nuxeo.ecm.platform.usermanager.UserService" point="userManager">
 
-    <userManager class="org.nuxeo.ecm.platform.usermanager.UserManagerImpl">
+    <userManager>
 
       <defaultAdministratorId>Administrator</defaultAdministratorId>
+      <administratorsGroup>administrators</administratorsGroup>
       <defaultGroup>members</defaultGroup>
       <users>
         <directory>resilientUserDirectory</directory>
