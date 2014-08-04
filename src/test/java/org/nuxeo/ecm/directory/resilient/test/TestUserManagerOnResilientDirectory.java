@@ -19,11 +19,7 @@
 
 package org.nuxeo.ecm.directory.resilient.test;
 
-import static org.junit.Assert.fail;
-
 import java.util.List;
-
-import javax.security.auth.login.LoginException;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -146,26 +142,20 @@ public class TestUserManagerOnResilientDirectory extends LDAPDirectoryTestCase {
         if(USE_EXTERNAL_TEST_LDAP_SERVER)
         {
             Assert.assertNotNull(userManager.authenticate(username1, password1));
+            //Shutdown manually your LDAP server to test fallback against authenticate
             Assert.assertNotNull(userManager.authenticate(username1, password1));
-            try
-            {
-                Framework.login(username1, password1);
-                System.out.println("ok");
-            }catch(LoginException ex)
-            {
-                fail("sould be loged-in !");
-            }
         }
     }
 
     @Test
-    public void TestFallback() throws ClientException
+    public void TestFallback() throws Exception
     {
         //Get
         NuxeoPrincipal userPrincip = userManager.getPrincipal(username1);
         shutdownLdapServer();
         NuxeoPrincipal userPrincipFall = userManager.getPrincipal(username1);
         Assert.assertEquals(userPrincip, userPrincipFall);
+
         //Search
     }
 
