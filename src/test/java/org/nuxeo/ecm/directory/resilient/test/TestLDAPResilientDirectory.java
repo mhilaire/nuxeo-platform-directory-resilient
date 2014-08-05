@@ -109,8 +109,6 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
         sqlGroupDir = (SQLDirectoryProxy) (directoryService.getDirectory("sqlGroupDirectory"));
         sqlGroupSession = sqlGroupDir.getSession();
 
-
-
     }
 
     @Override
@@ -133,7 +131,7 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
     }
 
     @Test
-    public void testGetEntry() throws Exception {
+    public void testFallbackOnGetEntry() throws Exception {
         DocumentModel entry = resUserDirSession.getEntry("user1");
         assertNotNull(entry);
 
@@ -151,12 +149,14 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
         if (USE_EXTERNAL_TEST_LDAP_SERVER) {
             DocumentModel ldapUser = resUserDirSession.getEntry("user1");
             assertNotNull(ldapUser);
-            List<String> ldapUserGroups = (List<String>) ldapUser.getProperty("user", "groups");
+            List<String> ldapUserGroups = (List<String>) ldapUser.getProperty(
+                    "user", "groups");
             assertNotNull(ldapUserGroups);
 
             DocumentModel sqlUser = sqlUserSession.getEntry("user1");
             assertNotNull(sqlUser);
-            List<String> sqlUserGroups = (List<String>) sqlUser.getProperty("user", "groups");
+            List<String> sqlUserGroups = (List<String>) sqlUser.getProperty(
+                    "user", "groups");
             assertEquals(ldapUserGroups, sqlUserGroups);
 
             DocumentModel ldapGroup = ldapGroupSession.getEntry(sqlUserGroups.get(0));
@@ -169,10 +169,10 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
 
     @Test
     public void testAuthenticate() throws Exception {
-        //Not possible to authenticate against internal ldap server
+        // Not possible to authenticate against internal ldap server
         if (USE_EXTERNAL_TEST_LDAP_SERVER) {
             assertTrue(resUserDirSession.authenticate("user1", "secret"));
-            //Shutdown manually your external LDAP to test fallback
+            // Shutdown manually your external LDAP to test fallback
             assertTrue(resUserDirSession.authenticate("user1", "secret"));
         }
 
