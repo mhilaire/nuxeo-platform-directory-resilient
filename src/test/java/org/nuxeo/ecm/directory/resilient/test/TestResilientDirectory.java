@@ -38,9 +38,13 @@ import java.util.Set;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.DocumentModelComparator;
 import org.nuxeo.ecm.core.api.DocumentModelList;
+import org.nuxeo.ecm.core.test.CoreFeature;
+import org.nuxeo.ecm.core.test.DefaultRepositoryInit;
+import org.nuxeo.ecm.core.test.annotations.RepositoryConfig;
 import org.nuxeo.ecm.directory.BaseSession;
 import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.Session;
@@ -49,18 +53,30 @@ import org.nuxeo.ecm.directory.memory.MemoryDirectory;
 import org.nuxeo.ecm.directory.memory.MemoryDirectoryFactory;
 import org.nuxeo.ecm.directory.resilient.ResilientDirectory;
 import org.nuxeo.ecm.directory.resilient.ResilientDirectorySession;
-import org.nuxeo.runtime.api.Framework;
-import org.nuxeo.runtime.test.NXRuntimeTestCase;
+import org.nuxeo.runtime.test.runner.Deploy;
+import org.nuxeo.runtime.test.runner.Features;
+import org.nuxeo.runtime.test.runner.FeaturesRunner;
+import org.nuxeo.runtime.test.runner.RuntimeHarness;
+
+import com.google.inject.Inject;
 
 /**
  * @author Florent Guillaume
  * @author Maxime Hilaire
  *
  */
-public class TestResilientDirectory extends NXRuntimeTestCase {
+
+@RunWith(FeaturesRunner.class)
+@Features(CoreFeature.class)
+@RepositoryConfig(init = DefaultRepositoryInit.class)
+@Deploy({ "org.nuxeo.ecm.directory.api", "org.nuxeo.ecm.directory",
+        "org.nuxeo.ecm.core.schema", "org.nuxeo.ecm.directory.types.contrib",
+        "org.nuxeo.ecm.directory.resilient" })
+public class TestResilientDirectory {
 
     private static final String TEST_BUNDLE = "org.nuxeo.ecm.directory.resilient.tests";
 
+    @Inject
     DirectoryService directoryService;
 
     MemoryDirectoryFactory memoryDirectoryFactory;
@@ -73,18 +89,16 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
 
     ResilientDirectorySession dir;
 
-    @Override
+    @Inject
+    protected RuntimeHarness harness;
+
     @Before
     public void setUp() throws Exception {
-        super.setUp();
-        // platform dependencies
-        deployBundle("org.nuxeo.ecm.core.schema");
-        deployBundle("org.nuxeo.ecm.directory");
 
-        deployContrib(TEST_BUNDLE, "schemas-config.xml");
+        // Deploy custom schema
+        harness.deployContrib(TEST_BUNDLE, "schemas-config.xml");
 
         // mem dir factory
-        directoryService = Framework.getLocalService(DirectoryService.class);
         memoryDirectoryFactory = new MemoryDirectoryFactory();
         directoryService.registerDirectory("memdirs", memoryDirectoryFactory);
 
@@ -134,10 +148,11 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
         dir2.createEntry(e);
 
         // Bundle to be tested
-        deployBundle("org.nuxeo.ecm.directory.resilient");
+        // deployBundle("org.nuxeo.ecm.directory.resilient");
 
         // Config for the tested bundle
-        deployContrib(TEST_BUNDLE, "resilient-memory-directories-config.xml");
+        harness.deployContrib(TEST_BUNDLE,
+                "resilient-memory-directories-config.xml");
 
         // the resilient directory
         resilientDir = (ResilientDirectory) directoryService.getDirectory("resilient");
@@ -145,44 +160,12 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
 
     }
 
-    @Test
-    public void testConfigSlaveReadOnly() {
-        Set<String> schema1Set = new HashSet<String>(Arrays.asList("uid",
-                "foo", "bar"));
-
-        MemoryDirectory memdir3 = new MemoryDirectory("dir3", "schema1", schema1Set, "uid",
-                "foo");
-        memoryDirectoryFactory.registerDirectory(memdir3);
-
-        MemoryDirectory memdir4 = new MemoryDirectory("dir4", "schema1", schema1Set, "uid",
-                "foo");
-        memdir4.setReadOnly(true);
-        memoryDirectoryFactory.registerDirectory(memdir4);
-
-        try {
-
-            // Config for the tested bundle
-            deployContrib(TEST_BUNDLE, "resilient-memory-read-only-directories-config.xml");
-
-            ResilientDirectory resilientDir = (ResilientDirectory) directoryService.getDirectory("readOnlyResilient");
-            ResilientDirectorySession dir = (ResilientDirectorySession) resilientDir.getSession();
-            fail("Should raise read-only exception on slave");
-        } catch (Exception ex) {
-        }
-
-        memoryDirectoryFactory.unregisterDirectory(memdir3);
-        memoryDirectoryFactory.unregisterDirectory(memdir4);
-    }
-
-
-
-    @Override
     @After
     public void tearDown() throws Exception {
         memoryDirectoryFactory.unregisterDirectory(memdir1);
         memoryDirectoryFactory.unregisterDirectory(memdir2);
         directoryService.unregisterDirectory("memdirs", memoryDirectoryFactory);
-        super.tearDown();
+        // super.tearDown();
     }
 
     @Test
@@ -245,7 +228,6 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
     @Test
     public void testReplicateOnGetEntry() throws Exception {
         DocumentModel entry;
-        Map<String, Object> e;
 
         Session dir2 = memdir2.getSession();
         entry = dir2.getEntry("1");
@@ -276,7 +258,6 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
     @Test
     public void testAuthenticate() throws Exception {
         // sub dirs
-        Session dir1 = memdir1.getSession();
         Session dir2 = memdir2.getSession();
         assertTrue(dir.authenticate("1", "foo1"));
 
@@ -465,7 +446,7 @@ public class TestResilientDirectory extends NXRuntimeTestCase {
     public void testReadOnlyEntryInQueryResults() throws Exception {
         Map<String, String> orderBy = new HashMap<String, String>();
         orderBy.put("schema1:uid", "asc");
-        DocumentModelComparator comp  = new DocumentModelComparator(orderBy);
+        DocumentModelComparator comp = new DocumentModelComparator(orderBy);
 
         Map<String, Serializable> filter = new HashMap<String, Serializable>();
         DocumentModelList results = dir.query(filter);

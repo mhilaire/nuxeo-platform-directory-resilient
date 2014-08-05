@@ -113,10 +113,7 @@ public abstract class LDAPDirectoryTestCase extends SQLRepositoryTestCase {
 
         deployTestContrib("org.nuxeo.ecm.directory.resilient.tests",
                 "ldap-schema.xml");
-//        deployTestContrib("org.nuxeo.ecm.directory.ldap.tests",
-//                "ldap-test-setup/DirectoryService.xml");
-//        deployTestContrib("org.nuxeo.ecm.directory.ldap.tests",
-//                "ldap-test-setup/LDAPDirectoryFactory.xml");
+
         deployTestContrib("org.nuxeo.ecm.directory.resilient.tests",
                 "sql-directories-config.xml");
         if (USE_EXTERNAL_TEST_LDAP_SERVER) {
