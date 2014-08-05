@@ -68,7 +68,7 @@ public abstract class LDAPDirectoryTestCase extends SQLRepositoryTestCase {
 
     // change this flag to use an external LDAP directory instead of the
     // non networked default ApacheDS implementation
-    public static final boolean USE_EXTERNAL_TEST_LDAP_SERVER = false;
+    public static final boolean USE_EXTERNAL_TEST_LDAP_SERVER = true;
 
     // change this flag in case the external LDAP server considers the
     // posixGroup class structural
@@ -91,10 +91,10 @@ public abstract class LDAPDirectoryTestCase extends SQLRepositoryTestCase {
 
     public List<String> getLdifFiles() {
         List<String> ldifFiles = new ArrayList<String>();
-        ldifFiles.add("ldif/sample-users.ldif");
-        ldifFiles.add("ldif/sample-groups.ldif");
+        ldifFiles.add("test-sample-users.ldif");
+        ldifFiles.add("test-sample-groups.ldif");
         if (HAS_DYNGROUP_SCHEMA) {
-            ldifFiles.add("ldif/sample-dynamic-groups.ldif");
+            ldifFiles.add("test-sample-dynamic-groups.ldif");
         }
         return ldifFiles;
     }
