@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2006-2007 Nuxeo SAS (http://nuxeo.com/) and contributors.
+ * (C) Copyright 2014 Nuxeo SAS (http://nuxeo.com/) and contributors.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the GNU Lesser General Public License
@@ -12,7 +12,7 @@
  * Lesser General Public License for more details.
  *
  * Contributors:
- *     Florent Guillaume
+ *     mhilaire
  *
  * $Id: TestMultiDirectory.java 30378 2008-02-20 17:37:26Z gracinet $
  */
@@ -157,7 +157,6 @@ public class TestResilientDirectory {
         // the resilient directory
         resilientDir = (ResilientDirectory) directoryService.getDirectory("resilient");
         dir = (ResilientDirectorySession) resilientDir.getSession();
-
     }
 
     @After
