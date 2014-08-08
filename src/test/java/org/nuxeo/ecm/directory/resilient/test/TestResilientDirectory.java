@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import junit.framework.Assert;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -435,10 +437,7 @@ public class TestResilientDirectory {
 
         assertTrue(BaseSession.isReadOnlyEntry(dir.getEntry("4")));
 
-        // TODO : Check memoryDirectory behavior : Why is it allowed to create
-        // even if the mode is read-only ?
-        // assertNull(dir2.getEntry("4"));
-        assertTrue(BaseSession.isReadOnlyEntry(dir2.getEntry("4")));
+        Assert.assertNull(dir2.getEntry("4"));
     }
 
     @Test
