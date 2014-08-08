@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2006-2007 Nuxeo SAS (http://nuxeo.com/) and contributors.
+ * (C) Copyright 2006-2014 Nuxeo SAS (http://nuxeo.com/) and contributors.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the GNU Lesser General Public License
@@ -12,9 +12,8 @@
  * Lesser General Public License for more details.
  *
  * Contributors:
- *     Nuxeo - initial API and implementation
+ *     mhilaire
  *
- * $Id: JOOoConvertPluginImpl.java 18651 2007-05-13 20:28:53Z sfermigier $
  */
 
 package org.nuxeo.ecm.directory.resilient.test;
@@ -52,9 +51,7 @@ import org.nuxeo.ecm.core.storage.sql.SQLRepositoryTestCase;
 import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.api.DirectoryService;
 import org.nuxeo.ecm.directory.ldap.LDAPDirectory;
-import org.nuxeo.ecm.directory.ldap.LDAPDirectoryProxy;
 import org.nuxeo.ecm.directory.ldap.LDAPSession;
-import org.nuxeo.ecm.directory.ldap.MockLdapServer;
 import org.nuxeo.runtime.api.Framework;
 
 /**
@@ -68,7 +65,7 @@ public abstract class LDAPDirectoryTestCase extends SQLRepositoryTestCase {
 
     // change this flag to use an external LDAP directory instead of the
     // non networked default ApacheDS implementation
-    public static final boolean USE_EXTERNAL_TEST_LDAP_SERVER = true;
+    public static final boolean USE_EXTERNAL_TEST_LDAP_SERVER = false;
 
     // change this flag in case the external LDAP server considers the
     // posixGroup class structural
@@ -214,9 +211,7 @@ public abstract class LDAPDirectoryTestCase extends SQLRepositoryTestCase {
     public LDAPDirectory getLDAPDirectory(String name)
             throws DirectoryException {
 
-        LDAPDirectoryProxy proxy = (LDAPDirectoryProxy) directoryService.getDirectory(name);
-        LDAPDirectory dir = proxy.getDirectory();
-        return dir;
+        return (LDAPDirectory) directoryService.getDirectory(name);
     }
 
     /**

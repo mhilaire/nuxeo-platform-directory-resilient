@@ -37,7 +37,7 @@ import org.nuxeo.ecm.directory.api.DirectoryService;
 import org.nuxeo.ecm.directory.ldap.LDAPDirectory;
 import org.nuxeo.ecm.directory.resilient.ResilientDirectory;
 import org.nuxeo.ecm.directory.resilient.ResilientDirectorySession;
-import org.nuxeo.ecm.directory.sql.SQLDirectoryProxy;
+import org.nuxeo.ecm.directory.sql.SQLDirectory;
 import org.nuxeo.runtime.api.Framework;
 
 /**
@@ -57,7 +57,7 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
 
     Session ldapUserSession;
 
-    SQLDirectoryProxy sqlUserDir;
+    SQLDirectory sqlUserDir;
 
     Session sqlUserSession;
 
@@ -65,7 +65,7 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
 
     private Session sqlGroupSession;
 
-    private SQLDirectoryProxy sqlGroupDir;
+    private SQLDirectory sqlGroupDir;
 
     private Session ldapGroupSession;
 
@@ -96,7 +96,7 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
         ldapUserDir = getLDAPDirectory("ldapUserDirectory");
         ldapUserSession = ldapUserDir.getSession();
 
-        sqlUserDir = (SQLDirectoryProxy) (directoryService.getDirectory("sqlUserDirectory"));
+        sqlUserDir = (SQLDirectory) (directoryService.getDirectory("sqlUserDirectory"));
         sqlUserSession = sqlUserDir.getSession();
 
         // the GROUP resilient directory
@@ -106,7 +106,7 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
         ldapGroupDir = getLDAPDirectory("ldapGroupDirectory");
         ldapGroupSession = ldapGroupDir.getSession();
 
-        sqlGroupDir = (SQLDirectoryProxy) (directoryService.getDirectory("sqlGroupDirectory"));
+        sqlGroupDir = (SQLDirectory) (directoryService.getDirectory("sqlGroupDirectory"));
         sqlGroupSession = sqlGroupDir.getSession();
 
     }
