@@ -407,19 +407,24 @@ public class ResilientDirectorySession extends BaseSession {
             boolean authenticated = masterSubDirectoryInfo.getSession().authenticate(
                     username, password);
             HashMap<String, Object> fieldMap = new HashMap<String, Object>();
+
             fieldMap.put(getIdField(), username);
             fieldMap.put(getPasswordField(), password);
+
             updateMasterOnSlaves(username, fieldMap, authenticated);
             return authenticated;
         } catch (DirectoryException e) {
             log.warn(
                     String.format(
-                            "Unable to authenticate the user '%s' against the master directory '%s'",
+                            "Unable to authenticate the user '%s' against the master directory '%s', will fallback on slave",
                             username, masterSubDirectoryInfo.dirName), e);
         }
 
         // If the master is KO, fallback on slave and try to authenticate
         for (SubDirectoryInfo dirInfo : slaveSubDirectoryInfos) {
+            log.info(String.format(
+                    "Trying to authenticate against slave directory %s",
+                    dirInfo.dirName));
             if (dirInfo.getSession().authenticate(username, password)) {
                 return true;
             }
@@ -457,9 +462,10 @@ public class ResilientDirectorySession extends BaseSession {
             entry = masterSubDirectoryInfo.getSession().getEntry(id,
                     fetchReferences);
         } catch (DirectoryException e) {
-            log.warn(String.format(
-                    "Unable to get the entry id '%s' in the directory '%s' ",
-                    id, masterSubDirectoryInfo.dirName), e);
+            log.warn(
+                    String.format(
+                            "Unable to get the entry id '%s' in the directory '%s', will fallback on slave ",
+                            id, masterSubDirectoryInfo.dirName), e);
             errorOccurs = true;
         }
 
@@ -470,6 +476,9 @@ public class ResilientDirectorySession extends BaseSession {
         } else if (entry == null && errorOccurs) {
             // Try to get the entry from slaves
             for (SubDirectoryInfo subDirectoryInfo : slaveSubDirectoryInfos) {
+                log.info(String.format(
+                        "Trying to get entry %s on slave directory %s",
+                        entry.getId(), subDirectoryInfo.dirName));
                 entry = subDirectoryInfo.getSession().getEntry(id,
                         fetchReferences);
                 if (isReadOnly()) {
@@ -516,7 +525,6 @@ public class ResilientDirectorySession extends BaseSession {
     }
 
     @Override
-    @SuppressWarnings("boxing")
     public DocumentModelList getEntries() throws ClientException {
         throw new UnsupportedOperationException(
                 "Get entries may be deprecated !");
@@ -732,7 +740,7 @@ public class ResilientDirectorySession extends BaseSession {
         } catch (DirectoryException e) {
             log.warn(
                     String.format(
-                            "Unable to check if master directory '%s' has entry id '%s', check on slaves ...",
+                            "Unable to check if master directory '%s' has entry id '%s', fallback check on slaves ...",
                             masterSubDirectoryInfo.dirName, id), e);
             return hasEntryOnSlave(id);
         }
