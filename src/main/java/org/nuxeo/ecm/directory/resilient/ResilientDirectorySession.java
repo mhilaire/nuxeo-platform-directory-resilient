@@ -478,7 +478,7 @@ public class ResilientDirectorySession extends BaseSession {
             for (SubDirectoryInfo subDirectoryInfo : slaveSubDirectoryInfos) {
                 log.info(String.format(
                         "Trying to get entry %s on slave directory %s",
-                        entry.getId(), subDirectoryInfo.dirName));
+                        id, subDirectoryInfo.dirName));
                 entry = subDirectoryInfo.getSession().getEntry(id,
                         fetchReferences);
                 if (isReadOnly()) {
