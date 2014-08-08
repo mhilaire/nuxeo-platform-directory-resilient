@@ -209,45 +209,6 @@ public class ResilientDirectorySession extends BaseSession {
     }
 
     @Override
-    public void commit() throws ClientException {
-        if (masterSubDirectoryInfo != null) {
-            Session session = masterSubDirectoryInfo.session;
-            if (session != null) {
-                session.commit();
-            }
-
-        }
-        if (slaveSubDirectoryInfos == null) {
-            return;
-        }
-        for (SubDirectoryInfo subDirectoryInfo : slaveSubDirectoryInfos) {
-            Session session = subDirectoryInfo.session;
-            if (session != null) {
-                session.commit();
-            }
-        }
-    }
-
-    @Override
-    public void rollback() throws ClientException {
-        if (masterSubDirectoryInfo != null) {
-            Session session = masterSubDirectoryInfo.session;
-            if (session != null) {
-                session.rollback();
-            }
-        }
-        if (slaveSubDirectoryInfos == null) {
-            return;
-        }
-        for (SubDirectoryInfo subDirectoryInfo : slaveSubDirectoryInfos) {
-            Session session = subDirectoryInfo.session;
-            if (session != null) {
-                session.rollback();
-            }
-        }
-    }
-
-    @Override
     public String getIdField() throws DirectoryException {
         return schemaIdField;
     }
