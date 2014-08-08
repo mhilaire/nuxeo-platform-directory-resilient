@@ -166,6 +166,25 @@ public class TestLDAPResilientDirectory extends LDAPDirectoryTestCase {
         }
 
     }
+    
+    @Test
+    public void testUpdateUser()
+    {
+        if (USE_EXTERNAL_TEST_LDAP_SERVER) {
+            DocumentModel ldapUser = resUserDirSession.getEntry("user1");
+            assertNotNull(ldapUser);
+            List<String> ldapUserGroups = (List<String>) ldapUser.getProperty(
+                    "user", "groups");
+            assertNotNull(ldapUserGroups);
+
+            ldapUser.setProperty("user", "firstName", "user1-updated");
+            resUserDirSession.updateEntry(ldapUser);
+            
+            DocumentModel sqlUser = sqlUserSession.getEntry("user1");
+            assertEquals(ldapUser, sqlUser);
+            
+        }
+    }
 
     @Test
     public void testAuthenticate() throws Exception {
