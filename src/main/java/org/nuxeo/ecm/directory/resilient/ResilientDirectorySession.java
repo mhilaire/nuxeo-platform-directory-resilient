@@ -301,7 +301,6 @@ public class ResilientDirectorySession extends BaseSession {
                             // Some props are not retrieved from master
                             // (ex:password)
                             if (fieldMap != null) {
-                                // TODO Deal with schema prefix here
                                 masterProps.putAll(fieldMap);
                             } else {
                                 if (getPasswordField() != null) {
@@ -325,8 +324,6 @@ public class ResilientDirectorySession extends BaseSession {
                             subDirInfo.getSession().updateEntry(entry);
 
                         } else {
-                            final DocumentModel entry = BaseSession.createEntryModel(
-                                    null, schemaName, entryId, null);
                             // Do not set dataModel values with constructor to
                             // force fields dirty
                             Map<String, Object> prefixProps = docModel.getProperties(schemaName);
@@ -338,20 +335,8 @@ public class ResilientDirectorySession extends BaseSession {
                                 prefixProps.putAll(fieldMap);
                             }
 
-                            Map<String, Object> props = new HashMap<String, Object>();
 
-                            for (Entry<String, Object> prop : prefixProps.entrySet()) {
-                                // XXX : hack to remove prefix
-                                // Check why SQL session is looking for prefix
-                                // but LDAP dir provid prefix prop
-                                String key = prop.getKey();
-                                key = key.substring(key.indexOf(":") + 1);
-                                props.put(key, prop.getValue());
-                            }
-
-                            entry.getDataModel(schemaName).setMap(props);
-
-                            subDirInfo.getSession().createEntry(props);
+                            subDirInfo.getSession().createEntry(prefixProps);
                         }
                     }
 
@@ -539,20 +524,9 @@ public class ResilientDirectorySession extends BaseSession {
             return null;
         }
 
-        // Deal with prefix : add prefix ahead of the name, beacu the map will
-        // contain prefixed fields
-        SchemaManager schemaManager = Framework.getLocalService(SchemaManager.class);
-        String prefix = schemaManager.getSchema(schemaName).getNamespace().prefix;
-        StringBuilder sbField = new StringBuilder();
-
-        String schemaField = schemaIdField;
-        if (prefix != null && !prefix.isEmpty()) {
-            sbField.append(prefix);
-            sbField.append(":");
-            sbField.append(schemaIdField);
-            schemaField = sbField.toString();
-        }
-        final Object rawid = fieldMap.get(schemaField);
+        Field schemaField = directory.getSchemaFieldMap().get(schemaIdField);
+        
+        final Object rawid = fieldMap.get(schemaField.getName().getPrefixedName());
         if (rawid == null) {
             throw new DirectoryException(String.format(
                     "Entry is missing id field '%s'", schemaIdField));
