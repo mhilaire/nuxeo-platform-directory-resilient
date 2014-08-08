@@ -19,6 +19,9 @@
 
 package org.nuxeo.ecm.directory.resilient.test;
 
+import static org.junit.Assert.assertNotNull;
+
+import java.util.HashMap;
 import java.util.List;
 
 import org.junit.After;
@@ -81,6 +84,64 @@ public class TestUserManagerOnResilientDirectory extends LDAPDirectoryTestCase {
         super.tearDown();
     }
 
+    @Test
+    public void testCreateUpdateUser()
+    {
+        if(USE_EXTERNAL_TEST_LDAP_SERVER)
+        {
+            String testUsername = "John";
+            String testGroup = "johnsGroup";
+
+            DocumentModel userModel = userManager.getBareUserModel();
+            userModel.setProperty("user", "username", testUsername);
+            userModel = userManager.createUser(userModel);
+
+            DocumentModel groupModel = userManager.getBareGroupModel();
+            groupModel.setProperty("group", "groupname", testGroup);
+            groupModel = userManager.createGroup(groupModel);
+
+            // Check entry parameters
+            Assert.assertNotNull("Expected the user to exist",
+                    userManager.getPrincipal(testUsername));
+            Assert.assertNotNull("Expected the group to exist",
+                    userManager.getGroup(testGroup));
+
+            // Add user to group
+            AddUserToGroup(testUsername, testGroup);
+
+            // Get result
+            NuxeoPrincipal user = userManager.getPrincipal(testUsername);
+            boolean result = user.isMemberOf(testGroup);
+
+            // Check result
+            Assert.assertEquals("Expected the user to be added to the group", true,
+                    result);
+            
+            String testFirstName = testUsername + "-updated";
+            
+            userModel.setProperty("user", "firstName", testFirstName);
+            userManager.updateUser(userModel);
+            
+            
+            DocumentModel newGroupModel = userManager.getBareGroupModel();
+            newGroupModel.setProperty("group", "groupname", testGroup+"2");
+            userManager.createGroup(newGroupModel);
+            
+            // Add user to group
+            AddUserToGroup(testUsername, testGroup+"2");
+
+            // Get result
+            user = userManager.getPrincipal(testUsername);
+            result = user.isMemberOf(testGroup);
+            result = user.isMemberOf(testGroup+"2");
+
+            // Check result
+            Assert.assertEquals("Expected the user to be added to the new group and the updated group", true,
+                    result);
+            
+        }
+    }
+    
     @Test
     public void TestCreateUserAndGroup() throws ClientException
     {
@@ -156,7 +217,6 @@ public class TestUserManagerOnResilientDirectory extends LDAPDirectoryTestCase {
         NuxeoPrincipal userPrincipFall = userManager.getPrincipal(username1);
         Assert.assertEquals(userPrincip, userPrincipFall);
 
-        //Search
     }
 
 
