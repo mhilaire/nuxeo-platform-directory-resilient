@@ -35,6 +35,7 @@ import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.DocumentModelList;
 import org.nuxeo.ecm.core.api.impl.DocumentModelListImpl;
 import org.nuxeo.ecm.core.schema.SchemaManager;
+import org.nuxeo.ecm.core.schema.types.Field;
 import org.nuxeo.ecm.directory.BaseSession;
 import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.Session;
@@ -332,17 +333,33 @@ public class ResilientDirectorySession extends BaseSession {
                             // Do not set dataModel values with constructor to
                             // force fields dirty
 
-                            // Init props from master
-                            entry.getDataModel(schemaName).setMap(
-                                    docModel.getProperties(schemaName));
+                            Map<String, Object> masterProps = docModel.getProperties(schemaName);
+
                             // Force update with the given properties if there
                             // are
                             // Some props are not retrieved from master
                             // (ex:password)
                             if (fieldMap != null) {
-                                entry.getDataModel(schemaName).getMap().putAll(
-                                        fieldMap);
+                                // TODO Deal with schema prefix here
+                                masterProps.putAll(fieldMap);
+                            } else {
+                                if (getPasswordField() != null) {
+                                    Field passwordField = directory.getSchemaFieldMap().get(
+                                            getPasswordField());
+                                    if (masterProps.containsKey(passwordField.getName().getPrefixedName())) {
+                                        if (masterProps.get(passwordField.getName().getPrefixedName()) == null) {
+                                            // The password should be null only
+                                            // when
+                                            // where are trying to call getEntry
+                                            // Remove it to avoid update to null
+                                            masterProps.remove(passwordField.getName().getPrefixedName());
+                                        }
+                                    }
+                                }
                             }
+
+                            // Init props from master
+                            entry.getDataModel(schemaName).setMap(masterProps);
 
                             subDirInfo.getSession().updateEntry(entry);
 
