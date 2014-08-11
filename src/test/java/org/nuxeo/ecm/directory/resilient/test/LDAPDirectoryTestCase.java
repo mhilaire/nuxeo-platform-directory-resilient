@@ -52,6 +52,7 @@ import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.api.DirectoryService;
 import org.nuxeo.ecm.directory.ldap.LDAPDirectory;
 import org.nuxeo.ecm.directory.ldap.LDAPSession;
+import org.nuxeo.ecm.directory.ldap.MockLdapServer;
 import org.nuxeo.runtime.api.Framework;
 
 /**
@@ -102,22 +103,24 @@ public abstract class LDAPDirectoryTestCase extends SQLRepositoryTestCase {
         deployBundle("org.nuxeo.ecm.core.schema");
         deployBundle("org.nuxeo.ecm.directory");
         deployBundle("org.nuxeo.ecm.directory.sql");
-
+        
+        
         // setup the client environment
         deployBundle("org.nuxeo.ecm.directory.ldap");
 
         directoryService = Framework.getLocalService(DirectoryService.class);
-
+        
+        
         deployTestContrib("org.nuxeo.ecm.directory.resilient.tests",
                 "ldap-schema.xml");
 
         deployTestContrib("org.nuxeo.ecm.directory.resilient.tests",
                 "sql-directories-config.xml");
         if (USE_EXTERNAL_TEST_LDAP_SERVER) {
-            deployTestContrib("org.nuxeo.ecm.directory.resilient.tests",
+            deployTestContrib("org.nuxeo.ecm.directory.ldap",
                     EXTERNAL_SERVER_SETUP);
         } else {
-            deployTestContrib("org.nuxeo.ecm.directory.resilient.tests",
+            deployTestContrib("org.nuxeo.ecm.directory.ldap",
                     INTERNAL_SERVER_SETUP);
             server = new MockLdapServer(new File(Framework.getRuntime().getHome(), "ldap"));
             getLDAPDirectory("ldapUserDirectory").setTestServer(server);
