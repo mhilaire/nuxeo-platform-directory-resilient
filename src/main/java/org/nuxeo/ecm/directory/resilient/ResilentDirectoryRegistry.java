@@ -75,7 +75,7 @@ public class ResilentDirectoryRegistry extends
     public void contributionRemoved(String id,
             ResilientDirectoryDescriptor origContrib) {
         descriptors.remove(id);
-        Directory dir = directories.remove(id);
+        Directory dir = directories.remove(origContrib.name);
         if (dir != null) {
             try {
                 dir.shutdown();
