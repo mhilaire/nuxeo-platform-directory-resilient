@@ -3,7 +3,8 @@
 <component name="org.nuxeo.ecm.directory.resilient.usermanager.test">
   <require>org.nuxeo.ecm.platform.usermanager.UserManagerImpl</require>
 
-  <extension target="org.nuxeo.ecm.platform.usermanager.UserService" point="userManager">
+  <extension target="org.nuxeo.ecm.platform.usermanager.UserService"
+    point="userManager">
 
     <userManager>
 
